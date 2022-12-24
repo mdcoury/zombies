@@ -8,7 +8,7 @@ import lombok.*;
 
 import java.util.UUID;
 
-import static ca.adaptor.zombies.game.model.ZombiesModelConstants.*;
+import static ca.adaptor.zombies.game.model.ZombiesModelConstants.COLUMN_CHARACTER_ID;
 
 @Getter
 @Setter
@@ -17,8 +17,10 @@ import static ca.adaptor.zombies.game.model.ZombiesModelConstants.*;
 @ToString
 @Entity
 @Table
-public class ZombiesPlayer {
+public class ZombiesCharacter {
+
+    @Getter
     @Id
-    @Column(name = COLUMN_PLAYER_ID, updatable = false, nullable = false)
-    private UUID uuid;
+    @Column(name = COLUMN_CHARACTER_ID, updatable = false, nullable = false)
+    private UUID id;
 }

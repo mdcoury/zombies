@@ -2,6 +2,8 @@ package ca.adaptor.zombies.game.controllers;
 
 import ca.adaptor.zombies.game.model.ZombiesMap;
 import ca.adaptor.zombies.game.repositories.ZombiesMapRepository;
+import ca.adaptor.zombies.game.repositories.ZombiesMapTileRepository;
+import ca.adaptor.zombies.game.repositories.ZombiesTileRepository;
 import ca.adaptor.zombies.game.util.ZombiesMapGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,22 +21,22 @@ public class ZombiesMapController {
     private static final Logger LOGGER = LoggerFactory.getLogger(ZombiesMapController.class);
 
     @Autowired
-    private ZombiesMapRepository repository;
+    private ZombiesMapRepository mapRepository;
+    @Autowired
+    private ZombiesTileRepository tileRepository;
+    @Autowired
+    private ZombiesMapTileRepository mapTileRepository;
 
     @PostMapping
-    public UUID create(
-            @RequestParam int width,
-            @RequestParam int height
-    ) {
-        var map = ZombiesMapGenerator.create(width, height);
-        LOGGER.debug("Created new ("+width+"x"+height+") map: " + map.dump());
-        repository.save(map);
+    public UUID create() {
+        var map = ZombiesMapGenerator.create(tileRepository, mapRepository, mapTileRepository);
+        LOGGER.debug("Created new map: " + map);
         return map.getUuid();
     }
 
     @GetMapping
     public List<ZombiesMap> retrieveAll() {
-        var ret = repository.findAll();
+        var ret = mapRepository.findAll();
         LOGGER.debug("Retrieving all maps... found " + ret.size());
         return ret;
     }
