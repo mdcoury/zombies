@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 
 import static ca.adaptor.zombies.game.model.ZombiesModelConstants.COLUMN_PLAYER_ID;
+import static ca.adaptor.zombies.game.model.ZombiesTile.TILE_SIZE;
 
 public class ZombiesGame {
     private static final Logger LOGGER = LoggerFactory.getLogger(ZombiesGame.class);
@@ -55,8 +56,8 @@ public class ZombiesGame {
                     //----- The helipad starts with a zombie on every square
                     for (int i = 0; i < tile.getNumZombies(); i++) {
                         theZombies.add(new ZombiesCoordinate(
-                                mapTile.getTopLeft().getX() + (i % 3),
-                                mapTile.getTopLeft().getY() + (i / 3)
+                                mapTile.getTopLeft().getX() + (i % TILE_SIZE),
+                                mapTile.getTopLeft().getY() + (i / TILE_SIZE)
                         ));
                     }
                 } else {

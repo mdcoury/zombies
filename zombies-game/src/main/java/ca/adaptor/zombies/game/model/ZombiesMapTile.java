@@ -10,6 +10,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.UUID;
 
 import static ca.adaptor.zombies.game.model.ZombiesModelConstants.*;
+import static ca.adaptor.zombies.game.model.ZombiesTile.TILE_SIZE;
 
 @NoArgsConstructor
 @EqualsAndHashCode
@@ -33,7 +34,7 @@ public class ZombiesMapTile {
     private ZombiesCoordinate topLeft;
 
     @Transient
-    private final ZombiesTile.SquareType[] squaresCache = new ZombiesTile.SquareType[9];
+    private final ZombiesTile.SquareType[] squaresCache = new ZombiesTile.SquareType[TILE_SIZE*TILE_SIZE];
     @Transient
     private boolean cached = false;
 
@@ -93,6 +94,6 @@ public class ZombiesMapTile {
             cacheRotation();
             cached = true;
         }
-        return squaresCache[x + y*3];
+        return squaresCache[x + y*TILE_SIZE];
     }
 }

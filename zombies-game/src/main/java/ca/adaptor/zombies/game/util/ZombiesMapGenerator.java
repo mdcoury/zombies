@@ -6,17 +6,19 @@ import ca.adaptor.zombies.game.model.ZombiesTile;
 import ca.adaptor.zombies.game.repositories.ZombiesMapRepository;
 import ca.adaptor.zombies.game.repositories.ZombiesMapTileRepository;
 import ca.adaptor.zombies.game.repositories.ZombiesTileRepository;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.lang.NonNull;
 
 import java.util.*;
 
-public class ZombiesMapGenerator {
-    private static Logger LOGGER = LoggerFactory.getLogger(ZombiesMapGenerator.class);
+import static ca.adaptor.zombies.game.model.ZombiesTile.NUM_SIDES;
+import static ca.adaptor.zombies.game.model.ZombiesTile.TILE_SIZE;
 
-    private static Random RNG = new Random();
-    private static int NUM_SIDES = 4;
+public class ZombiesMapGenerator {
+    private static final Logger LOGGER = LoggerFactory.getLogger(ZombiesMapGenerator.class);
+    private static final Random RNG = new Random();
 
     @NonNull
     public static ZombiesMap create(
@@ -33,7 +35,6 @@ public class ZombiesMapGenerator {
             placeTile(tile, ret, exits, zombiesMapTileRepository);
         }
 
-        LOGGER.debug("\n" + ret.dump());
         zombiesMapRepository.saveAndFlush(ret);
         return ret;
     }
@@ -100,11 +101,11 @@ public class ZombiesMapGenerator {
     }
 
     private static void addExits(
-            ZombiesMap map,
-            ZombiesTile tile,
-            List<ZombiesCoordinate> exits,
-            ZombiesCoordinate tileTopLeft,
-            ZombiesTile.TileRotation rotation
+            @NotNull ZombiesMap map,
+            @NotNull ZombiesTile tile,
+            @NotNull List<ZombiesCoordinate> exits,
+            @NotNull ZombiesCoordinate tileTopLeft,
+            @NotNull ZombiesTile.TileRotation rotation
     ) {
         var tileExits = tile.getExits();
         for(var tileExit : tileExits) {
@@ -131,10 +132,10 @@ public class ZombiesMapGenerator {
                     tileExitCoord = new ZombiesCoordinate(tileTopLeft.getX(), tileTopLeft.getY() + 1);
                     alignedExitCoord = new ZombiesCoordinate((tileTopLeft.getX()) - 1, tileTopLeft.getY() + 1);
                 }
-                default    -> throw new IllegalArgumentException();
+                default -> throw new IllegalArgumentException();
             }
 
-            if(map.getSquareType(getTopLeft(alignedExitCoord)) == null) {
+            if(map.getSquareType(alignedExitCoord) == null) {
                 exits.add(tileExitCoord);
             }
         }
@@ -143,16 +144,16 @@ public class ZombiesMapGenerator {
     private static ZombiesCoordinate getNeighbourTopLeft(ZombiesCoordinate coord, ZombiesTile.TileSide dir) {
         switch(dir) {
             case NORTH -> {
-                return new ZombiesCoordinate(coord.getX(), coord.getY() - 3);
+                return new ZombiesCoordinate(coord.getX(), coord.getY() - TILE_SIZE);
             }
             case SOUTH -> {
-                return new ZombiesCoordinate(coord.getX(), coord.getY() + 3);
+                return new ZombiesCoordinate(coord.getX(), coord.getY() + TILE_SIZE);
             }
             case EAST -> {
-                return new ZombiesCoordinate(coord.getX() + 3, coord.getY());
+                return new ZombiesCoordinate(coord.getX() + TILE_SIZE, coord.getY());
             }
             case WEST -> {
-                return new ZombiesCoordinate(coord.getX() - 3, coord.getY());
+                return new ZombiesCoordinate(coord.getX() - TILE_SIZE, coord.getY());
             }
             default -> throw new IllegalArgumentException();
         }
@@ -160,13 +161,13 @@ public class ZombiesMapGenerator {
 
     private static ZombiesCoordinate getTopLeft(ZombiesCoordinate coord) {
         return new ZombiesCoordinate(
-                coord.getX() - (coord.getX()%3),
-                coord.getY() - (coord.getY()%3)
+                coord.getX() - (coord.getX() % TILE_SIZE),
+                coord.getY() - (coord.getY() % TILE_SIZE)
         );
     }
     private static ZombiesCoordinate getOffset(ZombiesCoordinate coord) {
         return new ZombiesCoordinate(
-                coord.getX() % 3, coord.getY() % 3
+                coord.getX() % TILE_SIZE, coord.getY() % TILE_SIZE
         );
     }
 

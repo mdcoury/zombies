@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import static ca.adaptor.zombies.game.model.ZombiesModelConstants.*;
+import static ca.adaptor.zombies.game.model.ZombiesTile.TILE_SIZE;
 
 @EqualsAndHashCode
 @ToString
@@ -29,15 +30,15 @@ public class ZombiesMap {
     @Getter
     @Embedded
     @AttributeOverrides({
-            @AttributeOverride(name = "x", column = @Column(name = "town_square_x")),
-            @AttributeOverride(name = "y", column = @Column(name = "town_square_y")),
+            @AttributeOverride(name = COLUMN_X, column = @Column(name = COLUMN_TOWN_SQUARE_X)),
+            @AttributeOverride(name = COLUMN_Y, column = @Column(name = COLUMN_TOWN_SQUARE_Y)),
     })
     private ZombiesCoordinate townSquare;
     @Getter
     @Embedded
     @AttributeOverrides({
-            @AttributeOverride(name = "x", column = @Column(name = "helipad_x")),
-            @AttributeOverride(name = "y", column = @Column(name = "helipad_y")),
+            @AttributeOverride(name = COLUMN_X, column = @Column(name = COLUMN_HELIPAD_X)),
+            @AttributeOverride(name = COLUMN_Y, column = @Column(name = COLUMN_HELIPAD_Y)),
     })
     private ZombiesCoordinate helipad;
 
@@ -53,11 +54,15 @@ public class ZombiesMap {
         }
         return targetSquare != ZombiesTile.SquareType.ROAD;
     }
-    public boolean checkValidPlacement(@NotNull ZombiesCoordinate xy, @NotNull ZombiesTile tile, ZombiesTile.TileRotation rotation) {
+    public boolean checkValidPlacement(
+            @NotNull ZombiesCoordinate xy,
+            @NotNull ZombiesTile tile,
+            ZombiesTile.TileRotation rotation
+    ) {
         return checkValidPlacement(xy.getX(), xy.getY(), tile, rotation);
     }
     public boolean checkValidPlacement(int x, int y, @NotNull ZombiesTile tile, ZombiesTile.TileRotation rotation) {
-        if(x%3 == 0 && y%3 == 0) {
+        if(x%TILE_SIZE == 0 && y%TILE_SIZE == 0) {
             var topLeft = new ZombiesCoordinate(x, y);
             var testTile = new ZombiesMapTile(tile, topLeft, rotation);
             //----- Ensure that there is not already a tile here
@@ -88,11 +93,11 @@ public class ZombiesMap {
         var mapTile = new ZombiesMapTile(tile, topLeft, rotation);
         mapTiles.put(topLeft, mapTile);
 
-        if(tile.getName() == ZombiesTile.TOWN_SQUARE) {
+        if(tile.getName().equals(ZombiesTile.TOWN_SQUARE)) {
             assert townSquare == null;
             townSquare = new ZombiesCoordinate(topLeft.getX() + 1, topLeft.getY() + 1);
         }
-        if(tile.getName() == ZombiesTile.HELIPAD) {
+        if(tile.getName().equals(ZombiesTile.HELIPAD)) {
             assert helipad == null;
             helipad = new ZombiesCoordinate(topLeft.getX() + 1, topLeft.getY() + 1);
         }
@@ -108,8 +113,8 @@ public class ZombiesMap {
     public ZombiesMapTile getMapTile(@NotNull ZombiesCoordinate xy) {
         //----- Get the top-left coordinate for xy's tile
         var tl = new ZombiesCoordinate(
-                xy.getX() - (xy.getX()%3),
-                xy.getY() - (xy.getY()%3)
+                xy.getX() - (xy.getX() % TILE_SIZE),
+                xy.getY() - (xy.getY() % TILE_SIZE)
         );
         //----- Find the MapTile for this coordinate
         if(mapTiles.containsKey(tl)) {
@@ -127,7 +132,7 @@ public class ZombiesMap {
     public ZombiesTile.SquareType getSquareType(@NotNull ZombiesCoordinate xy) {
         var mapTile = getMapTile(xy);
         if(mapTile != null) {
-            return mapTile.get(xy.getX()%3, xy.getY()%3);
+            return mapTile.get(xy.getX() % TILE_SIZE, xy.getY() % TILE_SIZE);
         }
         return null;
     }

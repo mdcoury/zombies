@@ -19,6 +19,8 @@ import static ca.adaptor.zombies.game.model.ZombiesModelConstants.COLUMN_TILE_ID
 @Entity
 @Table
 public class ZombiesTile {
+    public static final int NUM_SIDES = 4;
+    public static final int TILE_SIZE = 3;
     public enum SquareType {
         IMPASSABLE,
         ROAD,
@@ -55,7 +57,7 @@ public class ZombiesTile {
 
     @NotNull
     public SquareType get(int x, int y) {
-        return squareTypes[x + y*3];
+        return squareTypes[x + y*TILE_SIZE];
     }
 
     public boolean isBuilding() {
@@ -69,10 +71,10 @@ public class ZombiesTile {
     @NotNull
     public List<ZombiesCoordinate> getBuildingSquares() {
         var ret = new ArrayList<ZombiesCoordinate>();
-        for(int i = 0; i < 9; i++) {
+        for(int i = 0; i < TILE_SIZE*TILE_SIZE; i++) {
             var type = squareTypes[i];
             if(type == SquareType.BUILDING || type == SquareType.DOOR) {
-                ret.add(new ZombiesCoordinate(i%3, i/3));
+                ret.add(new ZombiesCoordinate(i%TILE_SIZE, i/TILE_SIZE));
             }
         }
         return ret;
