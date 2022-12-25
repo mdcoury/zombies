@@ -29,7 +29,7 @@ public class ZombiesTile {
         ;
     }
     public enum TileSide {
-        NORTH, SOUTH, EAST, WEST
+        NORTH, EAST, SOUTH, WEST
     }
     public enum TileRotation {
         ROT_0, ROT_90, ROT_180, ROT_270

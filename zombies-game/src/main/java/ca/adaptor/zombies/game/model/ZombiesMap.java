@@ -47,11 +47,11 @@ public class ZombiesMap {
     }
 
     private boolean testAdjacent(int x, int y, boolean isRoad) {
-        var target = get(x,y);
+        var targetSquare = getSquareType(x,y);
         if(isRoad) {
-            return target == null || target == ZombiesTile.SquareType.ROAD;
+            return targetSquare == null || targetSquare == ZombiesTile.SquareType.ROAD;
         }
-        return target != ZombiesTile.SquareType.ROAD;
+        return targetSquare != ZombiesTile.SquareType.ROAD;
     }
     public boolean checkValidPlacement(@NotNull ZombiesCoordinate xy, @NotNull ZombiesTile tile, ZombiesTile.TileRotation rotation) {
         return checkValidPlacement(xy.getX(), xy.getY(), tile, rotation);
@@ -105,12 +105,7 @@ public class ZombiesMap {
     }
 
     @Nullable
-    public ZombiesTile.SquareType get(int x, int y) {
-        return get(new ZombiesCoordinate(x, y));
-    }
-
-    @Nullable
-    public ZombiesTile.SquareType get(@NotNull ZombiesCoordinate xy) {
+    public ZombiesMapTile getMapTile(@NotNull ZombiesCoordinate xy) {
         //----- Get the top-left coordinate for xy's tile
         var tl = new ZombiesCoordinate(
                 xy.getX() - (xy.getX()%3),
@@ -118,9 +113,21 @@ public class ZombiesMap {
         );
         //----- Find the MapTile for this coordinate
         if(mapTiles.containsKey(tl)) {
-            var tile = mapTiles.get(tl);
-            var square = tile.get(xy.getX() - tl.getX(), xy.getY() - tl.getY());
-            return square;
+            return mapTiles.get(tl);
+        }
+        return null;
+    }
+
+    @Nullable
+    public ZombiesTile.SquareType getSquareType(int x, int y) {
+        return getSquareType(new ZombiesCoordinate(x, y));
+    }
+
+    @Nullable
+    public ZombiesTile.SquareType getSquareType(@NotNull ZombiesCoordinate xy) {
+        var mapTile = getMapTile(xy);
+        if(mapTile != null) {
+            return mapTile.get(xy.getX()%3, xy.getY()%3);
         }
         return null;
     }

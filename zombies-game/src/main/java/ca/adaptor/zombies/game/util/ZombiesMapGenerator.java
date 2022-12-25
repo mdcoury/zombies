@@ -134,7 +134,7 @@ public class ZombiesMapGenerator {
                 default    -> throw new IllegalArgumentException();
             }
 
-            if(map.get(getTopLeft(alignedExitCoord)) == null) {
+            if(map.getSquareType(getTopLeft(alignedExitCoord)) == null) {
                 exits.add(tileExitCoord);
             }
         }
