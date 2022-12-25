@@ -28,9 +28,17 @@ public class ZombiesMap {
     private Map<ZombiesCoordinate, ZombiesMapTile> mapTiles;
     @Getter
     @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "x", column = @Column(name = "town_square_x")),
+            @AttributeOverride(name = "y", column = @Column(name = "town_square_y")),
+    })
     private ZombiesCoordinate townSquare;
     @Getter
     @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "x", column = @Column(name = "helipad_x")),
+            @AttributeOverride(name = "y", column = @Column(name = "helipad_y")),
+    })
     private ZombiesCoordinate helipad;
 
     public ZombiesMap() {
