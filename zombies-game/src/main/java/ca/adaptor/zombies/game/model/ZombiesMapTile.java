@@ -5,6 +5,7 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.UUID;
 
@@ -19,20 +20,27 @@ public class ZombiesMapTile {
     @Getter
     @Id
     @Column(name = COLUMN_MAP_TILE_ID, updatable = false, nullable = false)
-    private UUID uuid;
-    @JoinColumn(name = COLUMN_MAP_ID)
-    @ManyToOne
+    private UUID id;
+    @Getter
+    @JoinColumn(name = COLUMN_TILE_ID, nullable = false, updatable = false)
+    @ManyToOne(fetch = FetchType.EAGER)
     private ZombiesTile tile;
+    @Getter
     @Enumerated
-    private ZombiesMap.TileRotation rotation;
+    private ZombiesTile.TileRotation rotation;
+    @Getter
+    @Embedded
+    private ZombiesCoordinate topLeft;
+
     @Transient
     private final ZombiesTile.SquareType[] squaresCache = new ZombiesTile.SquareType[9];
     @Transient
     private boolean cached = false;
 
-    public ZombiesMapTile(ZombiesTile tile, ZombiesMap.TileRotation rotation) {
-        this.uuid = UUID.randomUUID();
+    public ZombiesMapTile(@NotNull ZombiesTile tile, @NotNull ZombiesCoordinate topLeft, ZombiesTile.TileRotation rotation) {
+        this.id = UUID.randomUUID();
         this.tile = tile;
+        this.topLeft = topLeft;
         this.rotation = rotation;
     }
 
@@ -79,6 +87,7 @@ public class ZombiesMapTile {
         }
     }
 
+    @NotNull
     public ZombiesTile.SquareType get(int x, int y) {
         if(!cached) {
             cacheRotation();

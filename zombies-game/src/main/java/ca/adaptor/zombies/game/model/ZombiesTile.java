@@ -2,8 +2,10 @@ package ca.adaptor.zombies.game.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -23,10 +25,14 @@ public class ZombiesTile {
         BUILDING,
         DOOR,
         HELICOPTER,
-        TOWN_SQUARE;
+        TOWN_SQUARE
+        ;
     }
     public enum TileSide {
         NORTH, SOUTH, EAST, WEST
+    }
+    public enum TileRotation {
+        ROT_0, ROT_90, ROT_180, ROT_270
     }
 
     public static final String TOWN_SQUARE = "Town Square";
@@ -34,23 +40,45 @@ public class ZombiesTile {
 
     @Id
     @Column(name = COLUMN_TILE_ID, updatable = false, nullable = false)
-    private UUID uuid = UUID.randomUUID();
+    private UUID id = UUID.randomUUID();
     @ElementCollection(fetch = FetchType.EAGER)
     @Enumerated
     private SquareType[] squareTypes = new SquareType[9];
     @Column(updatable = false, nullable = false)
-    private int startingZombies = 0;
+    private int numZombies = 0;
     @Column(updatable = false, nullable = false)
-    private int startingLife = 0;
+    private int numLife = 0;
     @Column(updatable = false, nullable = false)
-    private int startingBullets = 0;
-    @Column(updatable = false)
+    private int numBullets = 0;
+    @Column(updatable = false, nullable = false)
     private String name;
 
+    @NotNull
     public SquareType get(int x, int y) {
         return squareTypes[x + y*3];
     }
 
+    public boolean isBuilding() {
+        return Arrays.stream(squareTypes)
+                .anyMatch(
+                        x -> x == SquareType.BUILDING
+                                || x == SquareType.DOOR
+                );
+    }
+
+    @NotNull
+    public List<ZombiesCoordinate> getBuildingSquares() {
+        var ret = new ArrayList<ZombiesCoordinate>();
+        for(int i = 0; i < 9; i++) {
+            var type = squareTypes[i];
+            if(type == SquareType.BUILDING || type == SquareType.DOOR) {
+                ret.add(new ZombiesCoordinate(i%3, i/3));
+            }
+        }
+        return ret;
+    }
+
+    @NotNull
     public List<TileSide> getExits() {
         var ret = new ArrayList<TileSide>();
         if(squareTypes[1] == SquareType.ROAD) { ret.add(TileSide.NORTH); };

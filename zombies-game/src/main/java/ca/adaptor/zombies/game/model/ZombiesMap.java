@@ -2,11 +2,11 @@ package ca.adaptor.zombies.game.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.jetbrains.annotations.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.lang.NonNull;
-import org.springframework.lang.Nullable;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -19,24 +19,25 @@ import static ca.adaptor.zombies.game.model.ZombiesModelConstants.*;
 @Table
 public class ZombiesMap {
     private static final Logger LOGGER = LoggerFactory.getLogger(ZombiesMap.class);
-    public enum TileRotation {
-        ROT_0, ROT_90, ROT_180, ROT_270
-    }
 
     @Getter
     @Id
     @Column(name = COLUMN_MAP_ID, updatable = false, nullable = false)
-    private UUID uuid;
-    @ElementCollection
-    private Map<ZombiesCoordinate, ZombiesMapTile> mapTiles = new HashMap<>();
+    private UUID id;
+    @ElementCollection(fetch = FetchType.EAGER)
+    private Map<ZombiesCoordinate, ZombiesMapTile> mapTiles;
+    @Getter
+    @Embedded
+    private ZombiesCoordinate townSquare;
+    @Getter
+    @Embedded
+    private ZombiesCoordinate helipad;
 
     public ZombiesMap() {
-        this.uuid = UUID.randomUUID();
+        this.id = UUID.randomUUID();
+        mapTiles = new HashMap<>();
     }
 
-    public boolean check(ZombiesCoordinate xy, ZombiesTile tile, TileRotation rotation) {
-        return check(xy.getX(), xy.getY(), tile, rotation);
-    }
     private boolean testAdjacent(int x, int y, boolean isRoad) {
         var target = get(x,y);
         if(isRoad) {
@@ -44,10 +45,13 @@ public class ZombiesMap {
         }
         return target != ZombiesTile.SquareType.ROAD;
     }
-    public boolean check(int x, int y, ZombiesTile tile, TileRotation rotation) {
+    public boolean checkValidPlacement(@NotNull ZombiesCoordinate xy, @NotNull ZombiesTile tile, ZombiesTile.TileRotation rotation) {
+        return checkValidPlacement(xy.getX(), xy.getY(), tile, rotation);
+    }
+    public boolean checkValidPlacement(int x, int y, @NotNull ZombiesTile tile, ZombiesTile.TileRotation rotation) {
         if(x%3 == 0 && y%3 == 0) {
             var topLeft = new ZombiesCoordinate(x, y);
-            var testTile = new ZombiesMapTile(tile, rotation);
+            var testTile = new ZombiesMapTile(tile, topLeft, rotation);
             //----- Ensure that there is not already a tile here
             if (!mapTiles.containsKey(topLeft)) {
                 //----- Ensure that all of this tile's exits align either with an exit or empty space
@@ -66,14 +70,30 @@ public class ZombiesMap {
         return false;
     }
 
-    public ZombiesMapTile add(int x, int y, ZombiesTile tile, TileRotation rotation) {
+    @NotNull
+    public ZombiesMapTile add(int x, int y, @NotNull ZombiesTile tile, ZombiesTile.TileRotation rotation) {
         return add(new ZombiesCoordinate(x,y), tile, rotation);
     }
-    public ZombiesMapTile add(ZombiesCoordinate topLeft, ZombiesTile tile, TileRotation rotation) {
+    @NotNull
+    public ZombiesMapTile add(@NotNull ZombiesCoordinate topLeft, @NotNull ZombiesTile tile, ZombiesTile.TileRotation rotation) {
         LOGGER.trace("Placed " + tile.getName() + " at " + topLeft + ", " + rotation);
-        var mapTile = new ZombiesMapTile(tile, rotation);
+        var mapTile = new ZombiesMapTile(tile, topLeft, rotation);
         mapTiles.put(topLeft, mapTile);
+
+        if(tile.getName() == ZombiesTile.TOWN_SQUARE) {
+            assert townSquare == null;
+            townSquare = new ZombiesCoordinate(topLeft.getX() + 1, topLeft.getY() + 1);
+        }
+        if(tile.getName() == ZombiesTile.HELIPAD) {
+            assert helipad == null;
+            helipad = new ZombiesCoordinate(topLeft.getX() + 1, topLeft.getY() + 1);
+        }
         return mapTile;
+    }
+
+    @NotNull
+    public Collection<ZombiesMapTile> getMapTiles() {
+        return mapTiles.values();
     }
 
     @Nullable
@@ -82,7 +102,7 @@ public class ZombiesMap {
     }
 
     @Nullable
-    public ZombiesTile.SquareType get(ZombiesCoordinate xy) {
+    public ZombiesTile.SquareType get(@NotNull ZombiesCoordinate xy) {
         //----- Get the top-left coordinate for xy's tile
         var tl = new ZombiesCoordinate(
                 xy.getX() - (xy.getX()%3),
@@ -97,7 +117,7 @@ public class ZombiesMap {
         return null;
     }
 
-    @NonNull
+    @NotNull
     public String dump() {
         var ret = new StringBuilder("Map dump:\n");
 

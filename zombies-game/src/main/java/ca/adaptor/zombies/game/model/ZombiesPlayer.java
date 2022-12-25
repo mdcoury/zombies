@@ -20,5 +20,5 @@ import static ca.adaptor.zombies.game.model.ZombiesModelConstants.*;
 public class ZombiesPlayer {
     @Id
     @Column(name = COLUMN_PLAYER_ID, updatable = false, nullable = false)
-    private UUID uuid;
+    private UUID id;
 }

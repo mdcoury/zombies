@@ -6,7 +6,6 @@ import ca.adaptor.zombies.game.model.ZombiesTile;
 import ca.adaptor.zombies.game.repositories.ZombiesMapRepository;
 import ca.adaptor.zombies.game.repositories.ZombiesMapTileRepository;
 import ca.adaptor.zombies.game.repositories.ZombiesTileRepository;
-import lombok.NoArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.lang.NonNull;
@@ -48,9 +47,9 @@ public class ZombiesMapGenerator {
         if(exits.size() == 0) {
             if(tile.getName().equals(ZombiesTile.TOWN_SQUARE)) {
                 var topLeft = new ZombiesCoordinate(90,90);
-                var mapTile = map.add(topLeft, tile, ZombiesMap.TileRotation.ROT_0);
+                var mapTile = map.add(topLeft, tile, ZombiesTile.TileRotation.ROT_0);
                 repository.save(mapTile);
-                addExits(map, tile, exits, topLeft, ZombiesMap.TileRotation.ROT_0);
+                addExits(map, tile, exits, topLeft, ZombiesTile.TileRotation.ROT_0);
             }
             else {
                 throw new IllegalStateException();
@@ -74,10 +73,10 @@ public class ZombiesMapGenerator {
                 var targetTopLeft = getNeighbourTopLeft(exitTopLeft, exitSide);
 
                 //----- Try all four rotations and accept iff one of them works
-                for(var rotation : ZombiesMap.TileRotation.values()) {
+                for(var rotation : ZombiesTile.TileRotation.values()) {
                     //----- Check to see if this is a valid placement; ie, there is not already a tile there (shouldn't
                     //      happen) and all of the new tile's exits align either with an existing exit or are open
-                    if(map.check(targetTopLeft, tile, rotation)) {
+                    if(map.checkValidPlacement(targetTopLeft, tile, rotation)) {
                         var mapTile = map.add(targetTopLeft, tile, rotation);
                         repository.save(mapTile);
                         //----- Remove the exit we aligned to
@@ -105,7 +104,7 @@ public class ZombiesMapGenerator {
             ZombiesTile tile,
             List<ZombiesCoordinate> exits,
             ZombiesCoordinate tileTopLeft,
-            ZombiesMap.TileRotation rotation
+            ZombiesTile.TileRotation rotation
     ) {
         var tileExits = tile.getExits();
         for(var tileExit : tileExits) {

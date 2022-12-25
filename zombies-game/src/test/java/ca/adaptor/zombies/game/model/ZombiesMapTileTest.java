@@ -16,7 +16,7 @@ public class ZombiesMapTileTest {
 
     @Test
     public void TileRotationTest_0() {
-        var tile = new ZombiesMapTile(repo.findByName("_elbow_1"), ZombiesMap.TileRotation.ROT_0);
+        var tile = new ZombiesMapTile(repo.findByName("_elbow_1"), new ZombiesCoordinate(0,0), ZombiesTile.TileRotation.ROT_0);
         Assertions.assertNotNull(tile);
         Assertions.assertEquals(IMPASSABLE, tile.get(0,0));
         Assertions.assertEquals(ROAD, tile.get(1,0));
@@ -31,7 +31,7 @@ public class ZombiesMapTileTest {
 
     @Test
     public void TileRotationTest_90() {
-        var tile = new ZombiesMapTile(repo.findByName("_elbow_1"), ZombiesMap.TileRotation.ROT_90);
+        var tile = new ZombiesMapTile(repo.findByName("_elbow_1"), new ZombiesCoordinate(0,0), ZombiesTile.TileRotation.ROT_90);
         Assertions.assertNotNull(tile);
 
         Assertions.assertEquals(IMPASSABLE, tile.get(0,0));
@@ -47,7 +47,7 @@ public class ZombiesMapTileTest {
 
     @Test
     public void TileRotationTest_180() {
-        var tile = new ZombiesMapTile(repo.findByName("_elbow_1"), ZombiesMap.TileRotation.ROT_180);
+        var tile = new ZombiesMapTile(repo.findByName("_elbow_1"), new ZombiesCoordinate(0,0), ZombiesTile.TileRotation.ROT_180);
         Assertions.assertNotNull(tile);
 
         Assertions.assertEquals(IMPASSABLE, tile.get(0,0));
@@ -63,7 +63,7 @@ public class ZombiesMapTileTest {
 
     @Test
     public void TileRotationTest_270() {
-        var tile = new ZombiesMapTile(repo.findByName("_elbow_1"), ZombiesMap.TileRotation.ROT_270);
+        var tile = new ZombiesMapTile(repo.findByName("_elbow_1"), new ZombiesCoordinate(0,0), ZombiesTile.TileRotation.ROT_270);
         Assertions.assertNotNull(tile);
 
         Assertions.assertEquals(IMPASSABLE, tile.get(0,0));

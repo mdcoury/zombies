@@ -31,7 +31,7 @@ public class ZombiesMapController {
     public UUID create() {
         var map = ZombiesMapGenerator.create(tileRepository, mapRepository, mapTileRepository);
         LOGGER.debug("Created new map: " + map);
-        return map.getUuid();
+        return map.getId();
     }
 
     @GetMapping
