@@ -1,46 +1,85 @@
 package ca.adaptor.zombies.game.model;
 
-import jakarta.persistence.ElementCollection;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToMany;
+import jakarta.persistence.*;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
-import static ca.adaptor.zombies.game.model.ZombiesModelConstants.COLUMN_PLAYER_ID;
+import static ca.adaptor.zombies.game.model.ZombiesModelConstants.*;
 import static ca.adaptor.zombies.game.model.ZombiesTile.TILE_SIZE;
 
+@NoArgsConstructor
+@EqualsAndHashCode
+@ToString
+@Entity(name = TABLE_GAME)
+@Table(name = TABLE_GAME)
 public class ZombiesGame {
     private static final Logger LOGGER = LoggerFactory.getLogger(ZombiesGame.class);
     private static final int MIN_PLAYERS = 1;
     private static final int MAX_PLAYERS = 6;
 
-    private UUID gameId = UUID.randomUUID();
-    @ElementCollection(fetch = FetchType.EAGER)
-    private Set<ZombiesCoordinate> theBullets = new HashSet<>();
-    @ElementCollection(fetch = FetchType.EAGER)
-    private Set<ZombiesCoordinate> theLife = new HashSet<>();
-    @ElementCollection(fetch = FetchType.EAGER)
-    private Set<ZombiesCoordinate> theZombies = new HashSet<>();
-    @JoinColumn(name = COLUMN_PLAYER_ID, nullable = false, updatable = false)
-    @OneToMany(fetch = FetchType.EAGER)
-    private List<ZombiesPlayer> thePlayers = new ArrayList<>();
-    private ZombiesMap theMap;
+    public static final int MAX_NUM_EVENT_CARDS = 3;
 
-    private boolean started = false;
+    @Getter
+    @Id
+    @GeneratedValue
+    @Column(name = COLUMN_GAME_ID, updatable = false, nullable = false)
+    private UUID id;
+    @Getter
+    @ElementCollection(fetch = FetchType.EAGER)
+    private Set<ZombiesCoordinate> bulletLocations = new HashSet<>();
+    @Getter
+    @ElementCollection(fetch = FetchType.EAGER)
+    private Set<ZombiesCoordinate> lifeLocations = new HashSet<>();
+    @Getter
+    @ElementCollection(fetch = FetchType.EAGER)
+    private Set<ZombiesCoordinate> zombieLocations = new HashSet<>();
+    @ElementCollection(fetch = FetchType.EAGER)
+    private Map<UUID, ZombiesGameData> playerData = new HashMap<>();
+    @Getter
+    @ElementCollection(fetch = FetchType.EAGER)
+    private List<UUID> playerIds = new ArrayList<>();
+    @Getter
+    @JoinColumn(name = COLUMN_MAP_ID, nullable = false, updatable = false)
+    @OneToOne(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    private ZombiesMap theMap;
+    @Getter
+    @Column(name = COLUMN_GAME_INITIALIZED, nullable = false)
+    private boolean initialized = false;
+    @Getter
+    @Column(name =  COLUMN_GAME_TURN, nullable = false)
+    private int turn = 0;
 
     public ZombiesGame(@NotNull ZombiesMap map) {
         this.theMap = map;
     }
 
+    public ZombiesGameData getPlayerData(UUID playerId) {
+        return playerData.get(playerId);
+    }
+
+    public void incrementTurn() { turn++; }
+
+    public boolean isZombieAtLocation(@NotNull ZombiesCoordinate coord) {
+        return zombieLocations.contains(coord);
+    }
+    public boolean isBulletAtLocation(@NotNull ZombiesCoordinate coord) {
+        return bulletLocations.contains(coord);
+    }
+    public boolean isLifeAtLocation(@NotNull ZombiesCoordinate coord) {
+        return lifeLocations.contains(coord);
+    }
+
     private void populateMap() {
-        if(!started) {
-            throw new IllegalStateException();
-        }
-        LOGGER.trace("Populating map...");
+        assert initialized;
+
+        LOGGER.trace("[game=" + getId() + "] Populating map ("+ theMap.getId()+")...");
         //----- Go through all of the map-tiles and place its items
         for(var mapTile : theMap.getMapTiles()) {
             var tile = mapTile.getTile();
@@ -55,7 +94,7 @@ public class ZombiesGame {
                 } else if (tile.getName().equals(ZombiesTile.HELIPAD)) {
                     //----- The helipad starts with a zombie on every square
                     for (int i = 0; i < tile.getNumZombies(); i++) {
-                        theZombies.add(new ZombiesCoordinate(
+                        zombieLocations.add(new ZombiesCoordinate(
                                 mapTile.getTopLeft().getX() + (i % TILE_SIZE),
                                 mapTile.getTopLeft().getY() + (i / TILE_SIZE)
                         ));
@@ -70,25 +109,27 @@ public class ZombiesGame {
     }
 
     private void populateStreet(@NotNull ZombiesMapTile mapTile) {
-        LOGGER.trace("Populating street: " + mapTile.getTile().getName());
+        assert initialized;
+
+        LOGGER.trace("[game=" + getId() + "] Populating street: " + mapTile.getTile().getName());
 
         var tile = mapTile.getTile();
         var exits = tile.getExits();
         for(var exit : exits) {
             switch(exit) {
-                case NORTH -> theZombies.add(new ZombiesCoordinate(
+                case NORTH -> zombieLocations.add(new ZombiesCoordinate(
                         mapTile.getTopLeft().getX() + 1,
                         mapTile.getTopLeft().getY()
                 ));
-                case SOUTH -> theZombies.add(new ZombiesCoordinate(
+                case SOUTH -> zombieLocations.add(new ZombiesCoordinate(
                         mapTile.getTopLeft().getX() + 1,
                         mapTile.getTopLeft().getY() + 2
                 ));
-                case EAST -> theZombies.add(new ZombiesCoordinate(
+                case EAST -> zombieLocations.add(new ZombiesCoordinate(
                         mapTile.getTopLeft().getX() + 2,
                         mapTile.getTopLeft().getY() + 1
                 ));
-                case WEST -> theZombies.add(new ZombiesCoordinate(
+                case WEST -> zombieLocations.add(new ZombiesCoordinate(
                         mapTile.getTopLeft().getX(),
                         mapTile.getTopLeft().getY() + 1
                 ));
@@ -97,7 +138,9 @@ public class ZombiesGame {
     }
 
     private void populateBuilding(@NotNull ZombiesMapTile mapTile) {
-        LOGGER.trace("Populating building: " + mapTile.getTile().getName());
+        assert initialized;
+
+        LOGGER.trace("[game=" + getId() + "] Populating building: " + mapTile.getTile().getName());
 
         var tile = mapTile.getTile();
         var buildingSquares = tile.getBuildingSquares();
@@ -109,7 +152,7 @@ public class ZombiesGame {
 
         for(var buildingSquare : buildingSquares) {
             if(nz > 0) {
-                theZombies.add(new ZombiesCoordinate(
+                zombieLocations.add(new ZombiesCoordinate(
                         mapTile.getTopLeft().getX() + buildingSquare.getX(),
                         mapTile.getTopLeft().getY() + buildingSquare.getY()
                 ));
@@ -117,14 +160,14 @@ public class ZombiesGame {
             }
 
             if (nb > 0) {
-                theBullets.add(new ZombiesCoordinate(
+                bulletLocations.add(new ZombiesCoordinate(
                         mapTile.getTopLeft().getX() + buildingSquare.getX(),
                         mapTile.getTopLeft().getY() + buildingSquare.getY()
                 ));
                 nb--;
             }
             else if(nl > 0) {
-                theLife.add(new ZombiesCoordinate(
+                lifeLocations.add(new ZombiesCoordinate(
                         mapTile.getTopLeft().getX() + buildingSquare.getX(),
                         mapTile.getTopLeft().getY() + buildingSquare.getY()
                 ));
@@ -137,27 +180,32 @@ public class ZombiesGame {
     }
 
     public boolean addPlayer(@NotNull ZombiesPlayer player) {
-        if(thePlayers.size() < MAX_PLAYERS) {
-            LOGGER.debug("Adding player: " + player);
-            thePlayers.add(player);
-            return true;
+        if(!isInitialized()) {
+            if (playerIds.size() < MAX_PLAYERS) {
+                LOGGER.debug("[game=" + getId() + "] Adding player: " + player);
+                playerIds.add(player.getId());
+                return true;
+            }
+            LOGGER.debug("[game=" + getId() + "] Game is full: unable to add player " + player);
         }
-
-        LOGGER.debug("Game is full: unable to add player " + player);
+        else {
+            LOGGER.debug("[game=" + getId() + "] Game is already started: unable to add player " + player);
+        }
         return false;
     }
 
-    public boolean start() {
-        if(started) {
-            throw new IllegalStateException();
+    public boolean initialize() {
+        if(initialized) {
+            throw new IllegalStateException("This game (" + getId() + ") is already started!");
         }
-        if(thePlayers.size() < MIN_PLAYERS) {
+        if(playerIds.size() < MIN_PLAYERS) {
+            LOGGER.warn("[game=" + getId() + "] Not enough players in game!");
             return false;
         }
 
-        LOGGER.debug("Starting game: " + gameId);
+        LOGGER.debug("[game=" + getId() + "] Starting game...");
 
-        started = true;
+        initialized = true;
         populateMap();
         return true;
     }

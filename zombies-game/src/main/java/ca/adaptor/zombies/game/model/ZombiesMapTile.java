@@ -15,11 +15,12 @@ import static ca.adaptor.zombies.game.model.ZombiesTile.TILE_SIZE;
 @NoArgsConstructor
 @EqualsAndHashCode
 @ToString
-@Entity
-@Table
+@Entity(name = TABLE_MAP_TILE)
+@Table(name = TABLE_MAP_TILE)
 public class ZombiesMapTile {
     @Getter
     @Id
+    @GeneratedValue
     @Column(name = COLUMN_MAP_TILE_ID, updatable = false, nullable = false)
     private UUID id;
     @Getter
@@ -27,9 +28,11 @@ public class ZombiesMapTile {
     @ManyToOne(fetch = FetchType.EAGER)
     private ZombiesTile tile;
     @Getter
+    @Column(name = COLUMN_MAP_TILE_ROTATION)
     @Enumerated
     private ZombiesTile.TileRotation rotation;
     @Getter
+    @Column(name = COLUMN_MAP_TILE_TOP_LEFT)
     @Embedded
     private ZombiesCoordinate topLeft;
 
@@ -39,7 +42,6 @@ public class ZombiesMapTile {
     private boolean cached = false;
 
     public ZombiesMapTile(@NotNull ZombiesTile tile, @NotNull ZombiesCoordinate topLeft, ZombiesTile.TileRotation rotation) {
-        this.id = UUID.randomUUID();
         this.tile = tile;
         this.topLeft = topLeft;
         this.rotation = rotation;

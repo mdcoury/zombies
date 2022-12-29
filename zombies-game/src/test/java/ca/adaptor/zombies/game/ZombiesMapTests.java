@@ -1,7 +1,5 @@
 package ca.adaptor.zombies.game;
 
-import ca.adaptor.zombies.game.model.ZombiesMap;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 

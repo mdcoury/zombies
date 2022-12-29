@@ -2,13 +2,16 @@ package ca.adaptor.zombies.game.util;
 
 import ca.adaptor.zombies.game.model.ZombiesTile;
 import ca.adaptor.zombies.game.repositories.ZombiesTileRepository;
-import org.slf4j.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 import org.springframework.util.ResourceUtils;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.StringTokenizer;
 import java.util.UUID;
 
@@ -64,8 +67,8 @@ public class ZombiesTileImporter implements CommandLineRunner {
             );
 
             if(!repository.existsByName(tile.getName())) {
-                LOGGER.debug("Creating tile: " + tile.getName());
-                repository.save(tile);
+                tile = repository.save(tile);
+                LOGGER.trace("Created tile: " + tile);
             }
         }
     }

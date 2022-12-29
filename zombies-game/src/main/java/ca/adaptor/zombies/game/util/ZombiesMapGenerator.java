@@ -1,6 +1,7 @@
 package ca.adaptor.zombies.game.util;
 
 import ca.adaptor.zombies.game.model.ZombiesCoordinate;
+import ca.adaptor.zombies.game.model.ZombiesDirection;
 import ca.adaptor.zombies.game.model.ZombiesMap;
 import ca.adaptor.zombies.game.model.ZombiesTile;
 import ca.adaptor.zombies.game.repositories.ZombiesMapRepository;
@@ -11,28 +12,32 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.lang.NonNull;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Random;
 
 import static ca.adaptor.zombies.game.model.ZombiesTile.NUM_SIDES;
 import static ca.adaptor.zombies.game.model.ZombiesTile.TILE_SIZE;
 
 public class ZombiesMapGenerator {
     private static final Logger LOGGER = LoggerFactory.getLogger(ZombiesMapGenerator.class);
-    private static final Random RNG = new Random();
 
     @NonNull
     public static ZombiesMap create(
-            ZombiesTileRepository zombiesTileRepository,
-            ZombiesMapRepository zombiesMapRepository,
-            ZombiesMapTileRepository zombiesMapTileRepository
+            @NonNull ZombiesTileRepository zombiesTileRepository,
+            @NonNull ZombiesMapRepository zombiesMapRepository,
+            @NonNull ZombiesMapTileRepository zombiesMapTileRepository,
+            @NonNull Random rng
     ) {
         var ret = new ZombiesMap();
-        var deck = shuffleTiles(zombiesTileRepository);
+        zombiesMapRepository.saveAndFlush(ret);
+        var deck = shuffleTiles(zombiesTileRepository, rng);
 
         var exits = new ArrayList<ZombiesCoordinate>();
-        placeTile(zombiesTileRepository.findByName(ZombiesTile.TOWN_SQUARE), ret, exits, zombiesMapTileRepository);
+        placeTile(zombiesTileRepository.findByName(ZombiesTile.TOWN_SQUARE), ret, exits, zombiesMapTileRepository, rng);
         for(var tile : deck) {
-            placeTile(tile, ret, exits, zombiesMapTileRepository);
+            placeTile(tile, ret, exits, zombiesMapTileRepository, rng);
         }
 
         zombiesMapRepository.saveAndFlush(ret);
@@ -43,7 +48,8 @@ public class ZombiesMapGenerator {
             ZombiesTile tile,
             ZombiesMap map,
             List<ZombiesCoordinate> exits,
-            ZombiesMapTileRepository repository
+            ZombiesMapTileRepository repository,
+            Random rng
     ) {
         if(exits.size() == 0) {
             if(tile.getName().equals(ZombiesTile.TOWN_SQUARE)) {
@@ -58,7 +64,7 @@ public class ZombiesMapGenerator {
         }
         else {
             //----- We'll go through the remaining exits randomly
-            Collections.shuffle(exits, RNG);
+            Collections.shuffle(exits, rng);
             ZombiesCoordinate exitToRemove = null;
             for(var exit : exits) {
                 //----- Where is the exit inside the tile
@@ -67,8 +73,8 @@ public class ZombiesMapGenerator {
                 var exitTopLeft = getTopLeft(exit);
                 //----- Which side is the exit on
                 var exitSide = (exitOffset.getX() == 1)
-                        ? ((exitOffset.getY() == 0) ? ZombiesTile.TileSide.NORTH : ZombiesTile.TileSide.SOUTH)
-                        : ((exitOffset.getX() == 0) ? ZombiesTile.TileSide.WEST : ZombiesTile.TileSide.EAST);
+                        ? ((exitOffset.getY() == 0) ? ZombiesDirection.NORTH : ZombiesDirection.SOUTH)
+                        : ((exitOffset.getX() == 0) ? ZombiesDirection.WEST : ZombiesDirection.EAST);
                 //----- What is the top-left of the tile we are exiting to; ie, this is where we are looking to place
                 //      the new tile
                 var targetTopLeft = getNeighbourTopLeft(exitTopLeft, exitSide);
@@ -109,7 +115,7 @@ public class ZombiesMapGenerator {
     ) {
         var tileExits = tile.getExits();
         for(var tileExit : tileExits) {
-            var exit = ZombiesTile.TileSide.values()[
+            var exit = ZombiesDirection.values()[
                     (tileExit.ordinal() + rotation.ordinal()) % NUM_SIDES
                     ];
 
@@ -141,7 +147,7 @@ public class ZombiesMapGenerator {
         }
     }
 
-    private static ZombiesCoordinate getNeighbourTopLeft(ZombiesCoordinate coord, ZombiesTile.TileSide dir) {
+    private static ZombiesCoordinate getNeighbourTopLeft(ZombiesCoordinate coord, ZombiesDirection dir) {
         switch(dir) {
             case NORTH -> {
                 return new ZombiesCoordinate(coord.getX(), coord.getY() - TILE_SIZE);
@@ -171,7 +177,10 @@ public class ZombiesMapGenerator {
         );
     }
 
-    private static List<ZombiesTile> shuffleTiles(ZombiesTileRepository repository) {
+    private static List<ZombiesTile> shuffleTiles(
+            ZombiesTileRepository repository,
+            Random rng
+    ) {
         var ret = repository.findAll();
         int ncards = ret.size();
 
@@ -180,9 +189,9 @@ public class ZombiesMapGenerator {
         var helipad = repository.findByName(ZombiesTile.HELIPAD);
         ret.remove(helipad);
 
-        Collections.shuffle(ret, RNG);
+        Collections.shuffle(ret, rng);
 
-        var index = RNG.nextInt(ncards/2) + ncards/2;
+        var index = rng.nextInt(ncards/2) + ncards/2;
         ret.add(index, helipad);
 
         return ret;

@@ -1,8 +1,11 @@
 package ca.adaptor.zombies.game.model;
 
 import jakarta.persistence.*;
-import lombok.*;
-import org.jetbrains.annotations.*;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.ToString;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,13 +19,14 @@ import static ca.adaptor.zombies.game.model.ZombiesTile.TILE_SIZE;
 
 @EqualsAndHashCode
 @ToString
-@Entity
-@Table
+@Entity(name = TABLE_MAP)
+@Table(name = TABLE_MAP)
 public class ZombiesMap {
     private static final Logger LOGGER = LoggerFactory.getLogger(ZombiesMap.class);
 
     @Getter
     @Id
+    @GeneratedValue
     @Column(name = COLUMN_MAP_ID, updatable = false, nullable = false)
     private UUID id;
     @ElementCollection(fetch = FetchType.EAGER)
@@ -33,17 +37,16 @@ public class ZombiesMap {
             @AttributeOverride(name = COLUMN_X, column = @Column(name = COLUMN_TOWN_SQUARE_X)),
             @AttributeOverride(name = COLUMN_Y, column = @Column(name = COLUMN_TOWN_SQUARE_Y)),
     })
-    private ZombiesCoordinate townSquare;
+    private ZombiesCoordinate townSquareLocation;
     @Getter
     @Embedded
     @AttributeOverrides({
             @AttributeOverride(name = COLUMN_X, column = @Column(name = COLUMN_HELIPAD_X)),
             @AttributeOverride(name = COLUMN_Y, column = @Column(name = COLUMN_HELIPAD_Y)),
     })
-    private ZombiesCoordinate helipad;
+    private ZombiesCoordinate helipadLocation;
 
     public ZombiesMap() {
-        this.id = UUID.randomUUID();
         mapTiles = new HashMap<>();
     }
 
@@ -89,17 +92,17 @@ public class ZombiesMap {
     }
     @NotNull
     public ZombiesMapTile add(@NotNull ZombiesCoordinate topLeft, @NotNull ZombiesTile tile, ZombiesTile.TileRotation rotation) {
-        LOGGER.trace("Placed " + tile.getName() + " at " + topLeft + ", " + rotation);
+        LOGGER.trace("[map=" + getId() + "] Placed " + tile.getName() + " at " + topLeft + ", " + rotation);
         var mapTile = new ZombiesMapTile(tile, topLeft, rotation);
         mapTiles.put(topLeft, mapTile);
 
         if(tile.getName().equals(ZombiesTile.TOWN_SQUARE)) {
-            assert townSquare == null;
-            townSquare = new ZombiesCoordinate(topLeft.getX() + 1, topLeft.getY() + 1);
+            assert townSquareLocation == null;
+            townSquareLocation = new ZombiesCoordinate(topLeft.getX() + 1, topLeft.getY() + 1);
         }
         if(tile.getName().equals(ZombiesTile.HELIPAD)) {
-            assert helipad == null;
-            helipad = new ZombiesCoordinate(topLeft.getX() + 1, topLeft.getY() + 1);
+            assert helipadLocation == null;
+            helipadLocation = new ZombiesCoordinate(topLeft.getX() + 1, topLeft.getY() + 1);
         }
         return mapTile;
     }

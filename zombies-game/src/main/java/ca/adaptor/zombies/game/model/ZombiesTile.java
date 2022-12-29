@@ -9,18 +9,27 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
-import static ca.adaptor.zombies.game.model.ZombiesModelConstants.COLUMN_TILE_ID;
+import static ca.adaptor.zombies.game.model.ZombiesModelConstants.*;
 
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
 @ToString
 @EqualsAndHashCode
-@Entity
-@Table
+@Entity(name = TABLE_TILE)
+@Table(
+        name = TABLE_TILE,
+        indexes = {
+                @Index(name = INDEX_TILE_NAME, columnList = COLUMN_TILE_NAME)
+        }
+)
 public class ZombiesTile {
     public static final int NUM_SIDES = 4;
     public static final int TILE_SIZE = 3;
+
+    public static final String TOWN_SQUARE = "Town Square";
+    public static final String HELIPAD = "Helipad";
+
     public enum SquareType {
         IMPASSABLE,
         ROAD,
@@ -30,29 +39,24 @@ public class ZombiesTile {
         TOWN_SQUARE
         ;
     }
-    public enum TileSide {
-        NORTH, EAST, SOUTH, WEST
-    }
     public enum TileRotation {
         ROT_0, ROT_90, ROT_180, ROT_270
     }
 
-    public static final String TOWN_SQUARE = "Town Square";
-    public static final String HELIPAD = "Helipad";
-
     @Id
+    @GeneratedValue
     @Column(name = COLUMN_TILE_ID, updatable = false, nullable = false)
-    private UUID id = UUID.randomUUID();
+    private UUID id;
     @ElementCollection(fetch = FetchType.EAGER)
     @Enumerated
     private SquareType[] squareTypes = new SquareType[9];
-    @Column(updatable = false, nullable = false)
-    private int numZombies = 0;
-    @Column(updatable = false, nullable = false)
-    private int numLife = 0;
-    @Column(updatable = false, nullable = false)
-    private int numBullets = 0;
-    @Column(updatable = false, nullable = false)
+    @Column(name = COLUMN_TILE_NUM_ZOMBIES, updatable = false, nullable = false)
+    private int numZombies;
+    @Column(name = COLUMN_TILE_NUM_LIFE, updatable = false, nullable = false)
+    private int numLife;
+    @Column(name = COLUMN_TILE_NUM_BULLETS, updatable = false, nullable = false)
+    private int numBullets;
+    @Column(name = COLUMN_TILE_NAME, updatable = false, nullable = false)
     private String name;
 
     @NotNull
@@ -74,19 +78,19 @@ public class ZombiesTile {
         for(int i = 0; i < TILE_SIZE*TILE_SIZE; i++) {
             var type = squareTypes[i];
             if(type == SquareType.BUILDING || type == SquareType.DOOR) {
-                ret.add(new ZombiesCoordinate(i%TILE_SIZE, i/TILE_SIZE));
+                ret.add(new ZombiesCoordinate(i % TILE_SIZE, i / TILE_SIZE));
             }
         }
         return ret;
     }
 
     @NotNull
-    public List<TileSide> getExits() {
-        var ret = new ArrayList<TileSide>();
-        if(squareTypes[1] == SquareType.ROAD) { ret.add(TileSide.NORTH); };
-        if(squareTypes[3] == SquareType.ROAD) { ret.add(TileSide.WEST); };
-        if(squareTypes[5] == SquareType.ROAD) { ret.add(TileSide.EAST); };
-        if(squareTypes[7] == SquareType.ROAD) { ret.add(TileSide.SOUTH); };
+    public List<ZombiesDirection> getExits() {
+        var ret = new ArrayList<ZombiesDirection>();
+        if(squareTypes[1] == SquareType.ROAD) { ret.add(ZombiesDirection.NORTH); };
+        if(squareTypes[3] == SquareType.ROAD) { ret.add(ZombiesDirection.WEST); };
+        if(squareTypes[5] == SquareType.ROAD) { ret.add(ZombiesDirection.EAST); };
+        if(squareTypes[7] == SquareType.ROAD) { ret.add(ZombiesDirection.SOUTH); };
         return ret;
     }
 }
