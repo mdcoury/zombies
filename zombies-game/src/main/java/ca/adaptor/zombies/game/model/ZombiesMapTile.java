@@ -5,12 +5,14 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
+import org.hibernate.annotations.Cascade;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.UUID;
 
 import static ca.adaptor.zombies.game.model.ZombiesModelConstants.*;
 import static ca.adaptor.zombies.game.model.ZombiesTile.TILE_SIZE;
+import static org.hibernate.annotations.CascadeType.*;
 
 @NoArgsConstructor
 @EqualsAndHashCode
@@ -18,19 +20,24 @@ import static ca.adaptor.zombies.game.model.ZombiesTile.TILE_SIZE;
 @Entity(name = TABLE_MAP_TILE)
 @Table(name = TABLE_MAP_TILE)
 public class ZombiesMapTile {
+    public enum TileRotation {
+        ROT_0, ROT_90, ROT_180, ROT_270
+    }
+
     @Getter
     @Id
     @GeneratedValue
     @Column(name = COLUMN_MAP_TILE_ID, updatable = false, nullable = false)
     private UUID id;
     @Getter
+    @Cascade(value = { MERGE, SAVE_UPDATE })
     @JoinColumn(name = COLUMN_TILE_ID, nullable = false, updatable = false)
     @ManyToOne(fetch = FetchType.EAGER)
     private ZombiesTile tile;
     @Getter
     @Column(name = COLUMN_MAP_TILE_ROTATION)
     @Enumerated
-    private ZombiesTile.TileRotation rotation;
+    private TileRotation rotation;
     @Getter
     @Column(name = COLUMN_MAP_TILE_TOP_LEFT)
     @Embedded
@@ -41,7 +48,7 @@ public class ZombiesMapTile {
     @Transient
     private boolean cached = false;
 
-    public ZombiesMapTile(@NotNull ZombiesTile tile, @NotNull ZombiesCoordinate topLeft, ZombiesTile.TileRotation rotation) {
+    public ZombiesMapTile(@NotNull ZombiesTile tile, @NotNull ZombiesCoordinate topLeft, TileRotation rotation) {
         this.tile = tile;
         this.topLeft = topLeft;
         this.rotation = rotation;

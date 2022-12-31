@@ -23,7 +23,11 @@ import static ca.adaptor.zombies.game.controllers.ZombiesControllerConstants.PAT
 @RequestMapping(PATH_MAPS)
 public class ZombiesMapController {
     private static final Logger LOGGER = LoggerFactory.getLogger(ZombiesMapController.class);
-    private static final Random RNG = new Random();
+
+//    @Value("zombies.rng.seed")
+    private long rngSeed = System.currentTimeMillis();
+
+    private final Random rng = new Random(rngSeed);
 
     @Autowired
     private ZombiesMapRepository mapRepository;
@@ -33,7 +37,8 @@ public class ZombiesMapController {
     private ZombiesMapTileRepository mapTileRepository;
 
     public ZombiesMap createMap() {
-        var map = ZombiesMapGenerator.create(tileRepository, mapRepository, mapTileRepository, RNG);
+        var map = ZombiesMapGenerator.createAndSave(tileRepository, mapRepository, mapTileRepository, rng);
+        mapRepository.flush();
         LOGGER.debug("Created new map: " + map);
         return map;
     }
@@ -44,8 +49,8 @@ public class ZombiesMapController {
     }
 
     @GetMapping
-    public List<ZombiesMap> retrieveAll() {
-        var ret = mapRepository.findAll();
+    public List<UUID> getAllIds() {
+        var ret = mapRepository.findAllIds();
         LOGGER.debug("Retrieving all maps... found " + ret.size());
         return ret;
     }

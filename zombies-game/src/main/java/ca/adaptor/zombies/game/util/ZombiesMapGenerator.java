@@ -1,16 +1,12 @@
 package ca.adaptor.zombies.game.util;
 
-import ca.adaptor.zombies.game.model.ZombiesCoordinate;
-import ca.adaptor.zombies.game.model.ZombiesDirection;
-import ca.adaptor.zombies.game.model.ZombiesMap;
-import ca.adaptor.zombies.game.model.ZombiesTile;
+import ca.adaptor.zombies.game.model.*;
 import ca.adaptor.zombies.game.repositories.ZombiesMapRepository;
 import ca.adaptor.zombies.game.repositories.ZombiesMapTileRepository;
 import ca.adaptor.zombies.game.repositories.ZombiesTileRepository;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.lang.NonNull;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -23,15 +19,14 @@ import static ca.adaptor.zombies.game.model.ZombiesTile.TILE_SIZE;
 public class ZombiesMapGenerator {
     private static final Logger LOGGER = LoggerFactory.getLogger(ZombiesMapGenerator.class);
 
-    @NonNull
-    public static ZombiesMap create(
-            @NonNull ZombiesTileRepository zombiesTileRepository,
-            @NonNull ZombiesMapRepository zombiesMapRepository,
-            @NonNull ZombiesMapTileRepository zombiesMapTileRepository,
-            @NonNull Random rng
+    @NotNull
+    public static ZombiesMap createAndSave(
+            @NotNull ZombiesTileRepository zombiesTileRepository,
+            @NotNull ZombiesMapRepository zombiesMapRepository,
+            @NotNull ZombiesMapTileRepository zombiesMapTileRepository,
+            @NotNull Random rng
     ) {
-        var ret = new ZombiesMap();
-        zombiesMapRepository.saveAndFlush(ret);
+        var ret = zombiesMapRepository.save(new ZombiesMap());
         var deck = shuffleTiles(zombiesTileRepository, rng);
 
         var exits = new ArrayList<ZombiesCoordinate>();
@@ -40,23 +35,23 @@ public class ZombiesMapGenerator {
             placeTile(tile, ret, exits, zombiesMapTileRepository, rng);
         }
 
-        zombiesMapRepository.saveAndFlush(ret);
-        return ret;
+        return zombiesMapRepository.save(ret);
     }
 
     private static void placeTile(
             ZombiesTile tile,
             ZombiesMap map,
             List<ZombiesCoordinate> exits,
-            ZombiesMapTileRepository repository,
+            ZombiesMapTileRepository mapTileRepository,
             Random rng
     ) {
         if(exits.size() == 0) {
             if(tile.getName().equals(ZombiesTile.TOWN_SQUARE)) {
                 var topLeft = new ZombiesCoordinate(90,90);
-                var mapTile = map.add(topLeft, tile, ZombiesTile.TileRotation.ROT_0);
-                repository.save(mapTile);
-                addExits(map, tile, exits, topLeft, ZombiesTile.TileRotation.ROT_0);
+                mapTileRepository.save(
+                        map.add(topLeft, tile, ZombiesMapTile.TileRotation.ROT_0)
+                );
+                addExits(map, tile, exits, topLeft, ZombiesMapTile.TileRotation.ROT_0);
             }
             else {
                 throw new IllegalStateException();
@@ -80,12 +75,13 @@ public class ZombiesMapGenerator {
                 var targetTopLeft = getNeighbourTopLeft(exitTopLeft, exitSide);
 
                 //----- Try all four rotations and accept iff one of them works
-                for(var rotation : ZombiesTile.TileRotation.values()) {
+                for(var rotation : ZombiesMapTile.TileRotation.values()) {
                     //----- Check to see if this is a valid placement; ie, there is not already a tile there (shouldn't
                     //      happen) and all of the new tile's exits align either with an existing exit or are open
                     if(map.checkValidPlacement(targetTopLeft, tile, rotation)) {
-                        var mapTile = map.add(targetTopLeft, tile, rotation);
-                        repository.save(mapTile);
+                        mapTileRepository.save(
+                                map.add(targetTopLeft, tile, rotation)
+                        );
                         //----- Remove the exit we aligned to
                         exitToRemove = exit;
                         addExits(map, tile, exits, targetTopLeft, rotation);
@@ -111,7 +107,7 @@ public class ZombiesMapGenerator {
             @NotNull ZombiesTile tile,
             @NotNull List<ZombiesCoordinate> exits,
             @NotNull ZombiesCoordinate tileTopLeft,
-            @NotNull ZombiesTile.TileRotation rotation
+            @NotNull ZombiesMapTile.TileRotation rotation
     ) {
         var tileExits = tile.getExits();
         for(var tileExit : tileExits) {
@@ -181,7 +177,14 @@ public class ZombiesMapGenerator {
             ZombiesTileRepository repository,
             Random rng
     ) {
-        var ret = repository.findAll();
+        // NOTE: Workaround because repository.findAll() generates
+        //          java.lang.NullPointerException: Cannot store to object array because "loadedState" is null
+        //      when running from unit-test for an unknown reason
+        var names = repository.findAllNames();
+        var ret = new ArrayList<ZombiesTile>();
+        for(var name : names) {
+            ret.add(repository.findByName(name));
+        }
         int ncards = ret.size();
 
         var townSquare = repository.findByName(ZombiesTile.TOWN_SQUARE);

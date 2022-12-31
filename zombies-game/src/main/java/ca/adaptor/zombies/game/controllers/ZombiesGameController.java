@@ -2,6 +2,7 @@ package ca.adaptor.zombies.game.controllers;
 
 import ca.adaptor.zombies.game.model.ZombiesGame;
 import ca.adaptor.zombies.game.repositories.ZombiesGameRepository;
+import ca.adaptor.zombies.game.repositories.ZombiesMapRepository;
 import ca.adaptor.zombies.game.repositories.ZombiesPlayerRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +26,8 @@ public class ZombiesGameController {
     @Autowired
     private ZombiesPlayerRepository playerRepository;
     @Autowired
+    private ZombiesMapRepository mapRepository;
+    @Autowired
     private ZombiesMapController mapController;
 
     @PostMapping
@@ -36,9 +39,9 @@ public class ZombiesGameController {
     }
 
     @GetMapping
-    public List<ZombiesGame> getAll() {
-        var ret = gameRepository.findAll();
-        LOGGER.debug("Retrieving all maps... found " + ret.size());
+    public List<UUID> getAllIds() {
+        var ret = gameRepository.findAllIds();
+        LOGGER.debug("Retrieving all map-IDs... found " + ret.size());
         return ret;
     }
 
@@ -74,7 +77,7 @@ public class ZombiesGameController {
         if(gameOpt.isPresent()) {
             var game = gameOpt.get();
             if(!game.isInitialized()) {
-                LOGGER.debug("Starting game: " + game);
+                LOGGER.debug("Initializing game: " + game);
                 var initialized = game.initialize();
                 gameRepository.saveAndFlush(game);
                 return ResponseEntity.ok(initialized);

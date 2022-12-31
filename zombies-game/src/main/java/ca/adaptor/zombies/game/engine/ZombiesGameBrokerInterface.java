@@ -10,10 +10,8 @@ import java.util.UUID;
 public interface ZombiesGameBrokerInterface {
     void requestRoll();
     boolean requestUseBullets();
-    @Nullable
-    ZombiesDirection requestPlayerMovement();
-    @NotNull
-    Set<UUID> requestPlayerEventCardDiscards();
+    @Nullable ZombiesDirection requestPlayerMovement();
+    @NotNull Set<UUID> requestPlayerEventCardDiscards();
 
     void sendGameUpdate(@NotNull ZombiesGameUpdateMessage update);
 }

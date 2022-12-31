@@ -39,9 +39,6 @@ public class ZombiesTile {
         TOWN_SQUARE
         ;
     }
-    public enum TileRotation {
-        ROT_0, ROT_90, ROT_180, ROT_270
-    }
 
     @Id
     @GeneratedValue

@@ -1,10 +1,12 @@
 package ca.adaptor.zombies.game.model;
 
+import ca.adaptor.zombies.game.repositories.ZombiesMapRepository;
 import jakarta.persistence.*;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
+import org.hibernate.annotations.Cascade;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,6 +15,7 @@ import java.util.*;
 
 import static ca.adaptor.zombies.game.model.ZombiesModelConstants.*;
 import static ca.adaptor.zombies.game.model.ZombiesTile.TILE_SIZE;
+import static org.hibernate.annotations.CascadeType.*;
 
 @NoArgsConstructor
 @EqualsAndHashCode
@@ -40,15 +43,16 @@ public class ZombiesGame {
     @Getter
     @ElementCollection(fetch = FetchType.EAGER)
     private Set<ZombiesCoordinate> zombieLocations = new HashSet<>();
+    @Cascade(value = { DELETE, MERGE, SAVE_UPDATE })
     @ElementCollection(fetch = FetchType.EAGER)
     private Map<UUID, ZombiesGameData> playerData = new HashMap<>();
     @Getter
     @ElementCollection(fetch = FetchType.EAGER)
     private List<UUID> playerIds = new ArrayList<>();
     @Getter
-    @JoinColumn(name = COLUMN_MAP_ID, nullable = false, updatable = false)
-    @OneToOne(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
-    private ZombiesMap theMap;
+    @JoinColumn(name = COLUMN_MAP_ID, unique = true, nullable = false, updatable = false)
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    private ZombiesMap map;
     @Getter
     @Column(name = COLUMN_GAME_INITIALIZED, nullable = false)
     private boolean initialized = false;
@@ -57,10 +61,11 @@ public class ZombiesGame {
     private int turn = 0;
 
     public ZombiesGame(@NotNull ZombiesMap map) {
-        this.theMap = map;
+        this.map = map;
     }
 
-    public ZombiesGameData getPlayerData(UUID playerId) {
+    @NotNull
+    public ZombiesGameData getPlayerData(@NotNull UUID playerId) {
         return playerData.get(playerId);
     }
 
@@ -79,9 +84,9 @@ public class ZombiesGame {
     private void populateMap() {
         assert initialized;
 
-        LOGGER.trace("[game=" + getId() + "] Populating map ("+ theMap.getId()+")...");
+        LOGGER.trace("[game=" + getId() + "] Populating map (" + map.getId() + ")...");
         //----- Go through all of the map-tiles and place its items
-        for(var mapTile : theMap.getMapTiles()) {
+        for(var mapTile : map.getMapTiles()) {
             var tile = mapTile.getTile();
 
             //----- The town-square starts with _no_ zombies...
@@ -196,14 +201,14 @@ public class ZombiesGame {
 
     public boolean initialize() {
         if(initialized) {
-            throw new IllegalStateException("This game (" + getId() + ") is already started!");
+            throw new IllegalStateException("This game (" + getId() + ") is already initialized!");
         }
         if(playerIds.size() < MIN_PLAYERS) {
             LOGGER.warn("[game=" + getId() + "] Not enough players in game!");
             return false;
         }
 
-        LOGGER.debug("[game=" + getId() + "] Starting game...");
+        LOGGER.debug("[game=" + getId() + "] Initializing game...");
 
         initialized = true;
         populateMap();

@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.ToString;
+import org.hibernate.annotations.Cascade;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -16,6 +17,7 @@ import java.util.UUID;
 
 import static ca.adaptor.zombies.game.model.ZombiesModelConstants.*;
 import static ca.adaptor.zombies.game.model.ZombiesTile.TILE_SIZE;
+import static org.hibernate.annotations.CascadeType.*;
 
 @EqualsAndHashCode
 @ToString
@@ -29,7 +31,7 @@ public class ZombiesMap {
     @GeneratedValue
     @Column(name = COLUMN_MAP_ID, updatable = false, nullable = false)
     private UUID id;
-    @ElementCollection(fetch = FetchType.EAGER)
+    @ElementCollection(fetch = FetchType.LAZY)
     private Map<ZombiesCoordinate, ZombiesMapTile> mapTiles;
     @Getter
     @Embedded
@@ -60,11 +62,11 @@ public class ZombiesMap {
     public boolean checkValidPlacement(
             @NotNull ZombiesCoordinate xy,
             @NotNull ZombiesTile tile,
-            ZombiesTile.TileRotation rotation
+            ZombiesMapTile.TileRotation rotation
     ) {
         return checkValidPlacement(xy.getX(), xy.getY(), tile, rotation);
     }
-    public boolean checkValidPlacement(int x, int y, @NotNull ZombiesTile tile, ZombiesTile.TileRotation rotation) {
+    public boolean checkValidPlacement(int x, int y, @NotNull ZombiesTile tile, ZombiesMapTile.TileRotation rotation) {
         if(x%TILE_SIZE == 0 && y%TILE_SIZE == 0) {
             var topLeft = new ZombiesCoordinate(x, y);
             var testTile = new ZombiesMapTile(tile, topLeft, rotation);
@@ -87,11 +89,11 @@ public class ZombiesMap {
     }
 
     @NotNull
-    public ZombiesMapTile add(int x, int y, @NotNull ZombiesTile tile, ZombiesTile.TileRotation rotation) {
+    public ZombiesMapTile add(int x, int y, @NotNull ZombiesTile tile, ZombiesMapTile.TileRotation rotation) {
         return add(new ZombiesCoordinate(x,y), tile, rotation);
     }
     @NotNull
-    public ZombiesMapTile add(@NotNull ZombiesCoordinate topLeft, @NotNull ZombiesTile tile, ZombiesTile.TileRotation rotation) {
+    public ZombiesMapTile add(@NotNull ZombiesCoordinate topLeft, @NotNull ZombiesTile tile, ZombiesMapTile.TileRotation rotation) {
         LOGGER.trace("[map=" + getId() + "] Placed " + tile.getName() + " at " + topLeft + ", " + rotation);
         var mapTile = new ZombiesMapTile(tile, topLeft, rotation);
         mapTiles.put(topLeft, mapTile);

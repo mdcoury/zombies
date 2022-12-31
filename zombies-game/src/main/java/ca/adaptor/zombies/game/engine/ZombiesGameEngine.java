@@ -1,7 +1,7 @@
 package ca.adaptor.zombies.game.engine;
 
 import ca.adaptor.zombies.game.model.*;
-import ca.adaptor.zombies.game.repositories.ZombiesGameRepository;
+import ca.adaptor.zombies.game.repositories.ZombiesMapRepository;
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -18,8 +18,11 @@ public class ZombiesGameEngine {
     private static final Logger LOGGER = LoggerFactory.getLogger(ZombiesGameEngine.class);
     public static final int MIN_WINNING_ROLL = 4;
 
+    //    @Value("zombies.rng.seed")
+    private long rngSeed = System.currentTimeMillis();
+
     // TODO: Pass a seed into here, perhaps from application.properties
-    private final Random rng = new Random();
+    private final Random rng = new Random(rngSeed);
     @Getter
     private final UUID gameEngineId = UUID.randomUUID();
     @Getter
@@ -30,15 +33,13 @@ public class ZombiesGameEngine {
     private boolean running = false;
 
     private final Map<UUID, ZombiesGameBrokerInterface> theBrokersById = new HashMap<>();
-    private final ZombiesGameRepository gameRepository;
+    private ZombiesMap theMap;
 
     public <B extends ZombiesGameBrokerInterface> ZombiesGameEngine(
             @NotNull ZombiesGame game,
-            @NotNull Supplier<B> supplier,
-            @Autowired ZombiesGameRepository gameRepository
-            ) {
+            @NotNull Supplier<B> supplier
+    ) {
         theGame = game;
-        this.gameRepository = gameRepository;
         for(var playerId : theGame.getPlayerIds()) {
             theBrokersById.put(playerId, supplier.get());
         }
@@ -56,11 +57,12 @@ public class ZombiesGameEngine {
             }
         }
 
+        theMap = theGame.getMap(); //mapRepository.findById(theGame.getMapId()).orElseThrow();
+
         running = true;
         while(running) {
             //----- During a turn, players must perform the following steps.
             theGame.incrementTurn();
-            gameRepository.save(theGame);
             for(var playerId : theGame.getPlayerIds()) {
                 LOGGER.debug("Running... (Game=" + theGame.getId() + ", Engine=" + gameEngineId + ", Player=" + playerId + ",Turn=" + theGame.getTurn() + ")");
 
@@ -82,7 +84,6 @@ public class ZombiesGameEngine {
                 while(eventCards.size() < MAX_NUM_EVENT_CARDS) {
                     LOGGER.debug("Drawing card... (Game=" + theGame.getId() + ", Engine=" + gameEngineId + ", Player=" + playerId + ",Turn=" + theGame.getTurn() + ")");
                     eventCards.add(drawCard());
-                    gameRepository.save(theGame);
                 }
                 var update = createUpdateMessage(DRAW_CARDS);
                 update.setPlayerData(theGame.getPlayerData(playerId));
@@ -105,7 +106,6 @@ public class ZombiesGameEngine {
                 //     Play then proceeds clockwise around the table
                 resolveEventCardDiscards(playerId);
             }
-            gameRepository.flush();
         }
     }
 
@@ -167,7 +167,6 @@ public class ZombiesGameEngine {
                        var nb = MIN_WINNING_ROLL - roll;
                        for(int i = 0; i < nb; i++) {
                            var used = data.decrementBullets();
-                           gameRepository.save(theGame);
                            assert used;
                            roll++;
                        }
@@ -176,7 +175,6 @@ public class ZombiesGameEngine {
             }
             stillResolving = resolveCombatRoll(data, roll);
         }
-        gameRepository.save(theGame);
     }
 
     private boolean resolveCombatRoll(
@@ -191,13 +189,11 @@ public class ZombiesGameEngine {
             ret = false;
             assert theGame.getZombieLocations().contains(data.getLocation());
             theGame.getZombieLocations().remove(data.getLocation());
-            gameRepository.save(theGame);
             combatUpdate.getZombieKills().add(data.getLocation());
         }
         else {
             //----- The player loses a life :( decrementLife() returns false if the player's health is 0
             ret = data.decrementLife();
-            gameRepository.save(theGame);
         }
         broadcastUpdateMessage(combatUpdate);
         return ret;
@@ -274,10 +270,9 @@ public class ZombiesGameEngine {
             var update = createUpdateMessage(MOVEMENT);
             update.setPlayerData(data);
 
-            if(theGame.getTheMap().getSquareType(destination) != ZombiesTile.SquareType.IMPASSABLE) {
+            if(theMap.getSquareType(destination) != ZombiesTile.SquareType.IMPASSABLE) {
                 LOGGER.trace("Moving player ("+playerId+"): ("+data.getLocation()+") -> ("+destination+")");
                 data.setLocation(destination);
-                gameRepository.save(theGame);
                 //----- See if there's a zombie where the player has moved to
                 if(theGame.isZombieAtLocation(destination)) {
                     resolveCombat(playerId);
@@ -289,13 +284,11 @@ public class ZombiesGameEngine {
                     LOGGER.trace("Player ("+playerId+") found a bullet!");
                     theGame.getBulletLocations().remove(destination);
                     data.incrementBullets();
-                    gameRepository.save(theGame);
                 }
                 if(theGame.isLifeAtLocation(destination)) {
                     LOGGER.trace("Player ("+playerId+") found a life!");
                     theGame.getLifeLocations().remove(destination);
                     data.incrementLife();
-                    gameRepository.save(theGame);
                 }
             }
             else {
@@ -333,7 +326,7 @@ public class ZombiesGameEngine {
             for(var direction : directions) {
                 var destination = getDestination(zombieLocation, direction);
                 //----- This zombie can move to the destination iff the destination is not impassable, and...
-                if(theGame.getTheMap().getSquareType(destination) != ZombiesTile.SquareType.IMPASSABLE
+                if(theMap.getSquareType(destination) != ZombiesTile.SquareType.IMPASSABLE
                         //----- there is not already a zombie there
                         && !theGame.getZombieLocations().contains(destination)
                 ) {
@@ -343,7 +336,6 @@ public class ZombiesGameEngine {
                     // TODO: This is clunky...
                     theGame.getZombieLocations().remove(zombieLocation);
                     theGame.getZombieLocations().add(destination);
-                    gameRepository.save(theGame);
                     update.getZombieMovements().put(zombieLocation, destination);
                     break;
                 }
@@ -364,6 +356,5 @@ public class ZombiesGameEngine {
             LOGGER.trace("Player (" + playerId + ") discarding card: id= " + cardId);
             playerCards.removeIf(x -> x.getId().equals(cardId));
         }
-        gameRepository.save(theGame);
     }
 }

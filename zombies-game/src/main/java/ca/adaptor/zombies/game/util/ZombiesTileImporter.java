@@ -19,8 +19,11 @@ import java.util.UUID;
 public class ZombiesTileImporter implements CommandLineRunner {
     private static final Logger LOGGER = LoggerFactory.getLogger(ZombiesTileImporter.class);
 
-    @Autowired
-    private ZombiesTileRepository repository;
+    private final ZombiesTileRepository tileRepository;
+
+    public ZombiesTileImporter(@Autowired ZombiesTileRepository tileRepository) {
+        this.tileRepository = tileRepository;
+    }
 
     @Override
     public void run(String... args) {
@@ -40,7 +43,7 @@ public class ZombiesTileImporter implements CommandLineRunner {
                 .forEach(this::parseLine)
                 ;
         }
-        repository.flush();
+        tileRepository.flush();
     }
 
     private void parseLine(String line) {
@@ -66,8 +69,8 @@ public class ZombiesTileImporter implements CommandLineRunner {
                     st.nextToken()
             );
 
-            if(!repository.existsByName(tile.getName())) {
-                tile = repository.save(tile);
+            if(!tileRepository.existsByName(tile.getName())) {
+                tile = tileRepository.save(tile);
                 LOGGER.trace("Created tile: " + tile);
             }
         }
