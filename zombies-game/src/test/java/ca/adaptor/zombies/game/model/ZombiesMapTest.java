@@ -17,21 +17,21 @@ public class ZombiesMapTest {
     @Autowired
     private ZombiesMapTileRepository mtRepo;
 
-    @Test
-    public void mapSaveTest1() {
-        var tile = tRepo.findByName("_elbow_1");
-        var map = new ZombiesMap();
-        var mt = map.add(0, 0, tile, ZombiesMapTile.TileRotation.ROT_0);
-        mtRepo.save(mt);
-        mRepo.save(map);
-    }
-    @Test
-    public void mapSaveTest2() {
-        var tile = tRepo.findByName("_elbow_1");
-        var map = new ZombiesMap();
-        mRepo.save(map);
-        var mt = map.add(0, 0, tile, ZombiesMapTile.TileRotation.ROT_0);
-        mtRepo.save(mt);
-        mRepo.save(map);
-    }
+//    @Test
+//    public void mapSaveTest1() {
+//        var tile = tRepo.findByName("_elbow_1");
+//        var map = new ZombiesMap();
+//        var mt = map.add(0, 0, tile, ZombiesMapTile.TileRotation.ROT_0);
+//        mtRepo.save(mt);
+//        mRepo.save(map);
+//    }
+//    @Test
+//    public void mapSaveTest2() {
+//        var tile = tRepo.findByName("_elbow_1");
+//        var map = new ZombiesMap();
+//        mRepo.save(map);
+//        var mt = map.add(0, 0, tile, ZombiesMapTile.TileRotation.ROT_0);
+//        mtRepo.save(mt);
+//        mRepo.save(map);
+//    }
 }

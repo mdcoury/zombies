@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import lombok.ToString;
 import org.hibernate.annotations.Cascade;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
 
@@ -57,10 +58,13 @@ public class ZombiesMapTile {
     private void cacheRotation() {
         var squares = tile.getSquareTypes();
         switch(rotation) {
-            case ROT_0 -> {
+            case ROT_0 ->
+            //noinspection RedundantLabeledSwitchRuleCodeBlock
+            {
                 System.arraycopy(squares, 0, squaresCache, 0, 9);
             }
-            case ROT_90 -> {
+            case ROT_90 ->
+            {
                 squaresCache[0] = squares[6];
                 squaresCache[1] = squares[3];
                 squaresCache[2] = squares[0];
@@ -71,7 +75,8 @@ public class ZombiesMapTile {
                 squaresCache[7] = squares[5];
                 squaresCache[8] = squares[2];
             }
-            case ROT_180 -> {
+            case ROT_180 ->
+            {
                 squaresCache[0] = squares[8];
                 squaresCache[1] = squares[7];
                 squaresCache[2] = squares[6];
@@ -82,7 +87,8 @@ public class ZombiesMapTile {
                 squaresCache[7] = squares[1];
                 squaresCache[8] = squares[0];
             }
-            case ROT_270 -> {
+            case ROT_270 ->
+            {
                 squaresCache[0] = squares[2];
                 squaresCache[1] = squares[5];
                 squaresCache[2] = squares[8];
@@ -104,5 +110,15 @@ public class ZombiesMapTile {
             cached = true;
         }
         return squaresCache[x + y*TILE_SIZE];
+    }
+
+    @Nullable
+    public ZombiesTile.SquareType getSquareType(int x, int y) {
+        return getSquareType(new ZombiesCoordinate(x, y));
+    }
+
+    @Nullable
+    public ZombiesTile.SquareType getSquareType(@NotNull ZombiesCoordinate xy) {
+        return get(xy.getX() % TILE_SIZE, xy.getY() % TILE_SIZE);
     }
 }

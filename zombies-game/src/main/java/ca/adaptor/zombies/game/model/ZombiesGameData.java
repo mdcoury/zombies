@@ -24,9 +24,9 @@ public class ZombiesGameData {
     @Setter
     @Column(name = COLUMN_GAME_DATA_LOCATION, nullable = false)
     private ZombiesCoordinate location;
-    @Column(name = COLUMN_GAME_DATA_CARDS, nullable = false)
+    @Column(name = COLUMN_GAME_DATA_CARD_IDS, nullable = false)
     @ElementCollection(fetch = FetchType.EAGER)
-    private List<ZombiesEventCard> eventCards;
+    private List<UUID> eventCardIds;
     @Column(name = COLUMN_GAME_DATA_NUM_BULLETS, nullable = false)
     private int numBullets;
     @Column(name = COLUMN_GAME_DATA_NUM_LIFE, nullable = false)

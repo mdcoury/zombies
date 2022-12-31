@@ -29,7 +29,7 @@ public class ZombiesModelConstants {
     public static final String COLUMN_HELIPAD_Y                                                 = "helipad_y";
 
     public static final String COLUMN_GAME_DATA_LOCATION                                        = "game_data_location";
-    public static final String COLUMN_GAME_DATA_CARDS                                           = "game_data_cards";
+    public static final String COLUMN_GAME_DATA_CARD_IDS                                        = "game_data_card_ids";
     public static final String COLUMN_GAME_DATA_NUM_BULLETS                                     = "game_data_bullets";
     public static final String COLUMN_GAME_DATA_NUM_LIFE                                        = "game_data_life";
 

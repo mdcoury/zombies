@@ -1,21 +1,20 @@
 package ca.adaptor.zombies.game.model;
 
-import ca.adaptor.zombies.game.repositories.ZombiesMapRepository;
+import ca.adaptor.zombies.game.repositories.*;
 import jakarta.persistence.*;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
-import org.hibernate.annotations.Cascade;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.*;
 
 import static ca.adaptor.zombies.game.model.ZombiesModelConstants.*;
 import static ca.adaptor.zombies.game.model.ZombiesTile.TILE_SIZE;
-import static org.hibernate.annotations.CascadeType.*;
 
 @NoArgsConstructor
 @EqualsAndHashCode
@@ -24,10 +23,22 @@ import static org.hibernate.annotations.CascadeType.*;
 @Table(name = TABLE_GAME)
 public class ZombiesGame {
     private static final Logger LOGGER = LoggerFactory.getLogger(ZombiesGame.class);
+
     private static final int MIN_PLAYERS = 1;
     private static final int MAX_PLAYERS = 6;
 
     public static final int MAX_NUM_EVENT_CARDS = 3;
+
+    @Transient @Autowired
+    private ZombiesGameRepository gameRepository;
+    @Transient @Autowired
+    private ZombiesGameDataRepository gameDataRepository;
+    @Transient @Autowired
+    private ZombiesPlayerRepository playerRepository;
+    @Transient @Autowired
+    private ZombiesMapRepository mapRepository;
+    @Transient @Autowired
+    private ZombiesMapTileRepository mapTileRepository;
 
     @Getter
     @Id
@@ -43,16 +54,15 @@ public class ZombiesGame {
     @Getter
     @ElementCollection(fetch = FetchType.EAGER)
     private Set<ZombiesCoordinate> zombieLocations = new HashSet<>();
-    @Cascade(value = { DELETE, MERGE, SAVE_UPDATE })
+    /** Maps a player-id to a game-data-id */
     @ElementCollection(fetch = FetchType.EAGER)
-    private Map<UUID, ZombiesGameData> playerData = new HashMap<>();
+    private Map<UUID, UUID> playerDataId = new HashMap<>();
     @Getter
     @ElementCollection(fetch = FetchType.EAGER)
     private List<UUID> playerIds = new ArrayList<>();
     @Getter
-    @JoinColumn(name = COLUMN_MAP_ID, unique = true, nullable = false, updatable = false)
-    @OneToOne(fetch = FetchType.LAZY, optional = false)
-    private ZombiesMap map;
+    @Column(name = COLUMN_GAME_MAP_ID, nullable = false, updatable = false, unique = true)
+    private UUID mapId;
     @Getter
     @Column(name = COLUMN_GAME_INITIALIZED, nullable = false)
     private boolean initialized = false;
@@ -61,12 +71,12 @@ public class ZombiesGame {
     private int turn = 0;
 
     public ZombiesGame(@NotNull ZombiesMap map) {
-        this.map = map;
+        this.mapId = map.getId();
     }
 
     @NotNull
     public ZombiesGameData getPlayerData(@NotNull UUID playerId) {
-        return playerData.get(playerId);
+        return gameDataRepository.findById(playerId).orElseThrow();
     }
 
     public void incrementTurn() { turn++; }
@@ -84,9 +94,11 @@ public class ZombiesGame {
     private void populateMap() {
         assert initialized;
 
-        LOGGER.trace("[game=" + getId() + "] Populating map (" + map.getId() + ")...");
+        var map = mapRepository.findById(mapId).orElseThrow();
+        LOGGER.trace("[game=" + getId() + "] Populating map (" + mapId + ")...");
         //----- Go through all of the map-tiles and place its items
-        for(var mapTile : map.getMapTiles()) {
+        for(var mapTileId : map.getMapTileIds().values()) {
+            var mapTile = mapTileRepository.findById(mapTileId).orElseThrow();
             var tile = mapTile.getTile();
 
             //----- The town-square starts with _no_ zombies...
@@ -161,7 +173,7 @@ public class ZombiesGame {
                         mapTile.getTopLeft().getX() + buildingSquare.getX(),
                         mapTile.getTopLeft().getY() + buildingSquare.getY()
                 ));
-                nz--;
+                nz -= 1;
             }
 
             if (nb > 0) {
@@ -169,14 +181,14 @@ public class ZombiesGame {
                         mapTile.getTopLeft().getX() + buildingSquare.getX(),
                         mapTile.getTopLeft().getY() + buildingSquare.getY()
                 ));
-                nb--;
+                nb -= 1;
             }
             else if(nl > 0) {
                 lifeLocations.add(new ZombiesCoordinate(
                         mapTile.getTopLeft().getX() + buildingSquare.getX(),
                         mapTile.getTopLeft().getY() + buildingSquare.getY()
                 ));
-                nl--;
+                nl -= 1;
             }
             else {
                 break;

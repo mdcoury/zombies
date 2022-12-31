@@ -37,8 +37,8 @@ public class ZombiesMapController {
     private ZombiesMapTileRepository mapTileRepository;
 
     public ZombiesMap createMap() {
-        var map = ZombiesMapGenerator.createAndSave(tileRepository, mapRepository, mapTileRepository, rng);
-        mapRepository.flush();
+        var map = ZombiesMapGenerator.create(tileRepository, mapTileRepository, rng);
+        map = mapRepository.saveAndFlush(map);
         LOGGER.debug("Created new map: " + map);
         return map;
     }

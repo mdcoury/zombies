@@ -2,6 +2,7 @@ package ca.adaptor.zombies.game.engine;
 
 import ca.adaptor.zombies.game.model.*;
 import ca.adaptor.zombies.game.repositories.ZombiesMapRepository;
+import ca.adaptor.zombies.game.repositories.ZombiesMapTileRepository;
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -33,13 +34,19 @@ public class ZombiesGameEngine {
     private boolean running = false;
 
     private final Map<UUID, ZombiesGameBrokerInterface> theBrokersById = new HashMap<>();
+    private final ZombiesMapRepository mapRepository;
+    private final ZombiesMapTileRepository mapTileRepository;
     private ZombiesMap theMap;
 
     public <B extends ZombiesGameBrokerInterface> ZombiesGameEngine(
             @NotNull ZombiesGame game,
-            @NotNull Supplier<B> supplier
+            @NotNull Supplier<B> supplier,
+            @NotNull ZombiesMapRepository mapRepository,
+            @NotNull ZombiesMapTileRepository mapTileRepository
     ) {
         theGame = game;
+        this.mapRepository = mapRepository;
+        this.mapTileRepository = mapTileRepository;
         for(var playerId : theGame.getPlayerIds()) {
             theBrokersById.put(playerId, supplier.get());
         }
@@ -57,7 +64,7 @@ public class ZombiesGameEngine {
             }
         }
 
-        theMap = theGame.getMap(); //mapRepository.findById(theGame.getMapId()).orElseThrow();
+        theMap = mapRepository.findById(theGame.getMapId()).orElseThrow();
 
         running = true;
         while(running) {
@@ -80,10 +87,10 @@ public class ZombiesGameEngine {
                     }
                 }
                 //  3. Draw back up to three event cards, if you have less than three.
-                var eventCards = theGame.getPlayerData(playerId).getEventCards();
-                while(eventCards.size() < MAX_NUM_EVENT_CARDS) {
+                var eventCardIds = theGame.getPlayerData(playerId).getEventCardIds();
+                while(eventCardIds.size() < MAX_NUM_EVENT_CARDS) {
                     LOGGER.debug("Drawing card... (Game=" + theGame.getId() + ", Engine=" + gameEngineId + ", Player=" + playerId + ",Turn=" + theGame.getTurn() + ")");
-                    eventCards.add(drawCard());
+                    eventCardIds.add(drawCard());
                 }
                 var update = createUpdateMessage(DRAW_CARDS);
                 update.setPlayerData(theGame.getPlayerData(playerId));
@@ -212,7 +219,7 @@ public class ZombiesGameEngine {
     }
 
     @NotNull
-    private ZombiesEventCard drawCard() {
+    private UUID drawCard() {
         throw new RuntimeException("Not implemented yet");
     }
 
@@ -270,7 +277,10 @@ public class ZombiesGameEngine {
             var update = createUpdateMessage(MOVEMENT);
             update.setPlayerData(data);
 
-            if(theMap.getSquareType(destination) != ZombiesTile.SquareType.IMPASSABLE) {
+            var mapTileId = theMap.getMapTileId(destination);
+            assert mapTileId != null;
+            var mapTile = mapTileRepository.findById(mapTileId).orElseThrow();
+            if(mapTile.getSquareType(destination) != ZombiesTile.SquareType.IMPASSABLE) {
                 LOGGER.trace("Moving player ("+playerId+"): ("+data.getLocation()+") -> ("+destination+")");
                 data.setLocation(destination);
                 //----- See if there's a zombie where the player has moved to
@@ -325,8 +335,11 @@ public class ZombiesGameEngine {
             var zombieMoved = false;
             for(var direction : directions) {
                 var destination = getDestination(zombieLocation, direction);
+                var mapTileId = theMap.getMapTileId(destination);
+                assert mapTileId != null;
+                var mapTile = mapTileRepository.findById(mapTileId).orElseThrow();
                 //----- This zombie can move to the destination iff the destination is not impassable, and...
-                if(theMap.getSquareType(destination) != ZombiesTile.SquareType.IMPASSABLE
+                if(mapTile.getSquareType(destination) != ZombiesTile.SquareType.IMPASSABLE
                         //----- there is not already a zombie there
                         && !theGame.getZombieLocations().contains(destination)
                 ) {
@@ -351,10 +364,10 @@ public class ZombiesGameEngine {
     private void resolveEventCardDiscards(@NotNull UUID playerId) {
         LOGGER.trace("Resolving event-card discards... (Game=" + theGame.getId() + ", Engine=" + gameEngineId + ", Player=" + playerId + ",Turn=" + theGame.getTurn() + ")");
         var cardIdsToDiscard = theBrokersById.get(playerId).requestPlayerEventCardDiscards();
-        var playerCards = theGame.getPlayerData(playerId).getEventCards();
+        var playerCardIds = theGame.getPlayerData(playerId).getEventCardIds();
         for(var cardId : cardIdsToDiscard) {
             LOGGER.trace("Player (" + playerId + ") discarding card: id= " + cardId);
-            playerCards.removeIf(x -> x.getId().equals(cardId));
+            playerCardIds.removeIf(x -> x.equals(cardId));
         }
     }
 }

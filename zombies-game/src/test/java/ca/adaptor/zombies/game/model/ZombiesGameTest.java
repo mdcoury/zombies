@@ -19,14 +19,14 @@ public class ZombiesGameTest {
     @Autowired
     private ZombiesGameRepository gRepo;
 
-    @Test
-    public void gameSaveTest() {
-        var tile = tRepo.findByName("_elbow_1");
-        var map = new ZombiesMap();
-        mRepo.save(map);
-        var mt = map.add(0, 0, tile, ZombiesMapTile.TileRotation.ROT_0);
-        mtRepo.save(mt);
-        var game = new ZombiesGame(map);
-        gRepo.save(game);
-    }
+//    @Test
+//    public void gameSaveTest() {
+//        var tile = tRepo.findByName("_elbow_1");
+//        var map = new ZombiesMap();
+//        mRepo.save(map);
+//        var mt = map.add(0, 0, tile, ZombiesMapTile.TileRotation.ROT_0);
+//        mtRepo.save(mt);
+//        var game = new ZombiesGame(map);
+//        gRepo.save(game);
+//    }
 }

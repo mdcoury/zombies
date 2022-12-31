@@ -1,7 +1,6 @@
 package ca.adaptor.zombies.game.util;
 
 import ca.adaptor.zombies.game.model.*;
-import ca.adaptor.zombies.game.repositories.ZombiesMapRepository;
 import ca.adaptor.zombies.game.repositories.ZombiesMapTileRepository;
 import ca.adaptor.zombies.game.repositories.ZombiesTileRepository;
 import org.jetbrains.annotations.NotNull;
@@ -20,22 +19,22 @@ public class ZombiesMapGenerator {
     private static final Logger LOGGER = LoggerFactory.getLogger(ZombiesMapGenerator.class);
 
     @NotNull
-    public static ZombiesMap createAndSave(
-            @NotNull ZombiesTileRepository zombiesTileRepository,
-            @NotNull ZombiesMapRepository zombiesMapRepository,
-            @NotNull ZombiesMapTileRepository zombiesMapTileRepository,
+    public static ZombiesMap create(
+            @NotNull ZombiesTileRepository tileRepository,
+            @NotNull ZombiesMapTileRepository mapTileRepository,
             @NotNull Random rng
     ) {
-        var ret = zombiesMapRepository.save(new ZombiesMap());
-        var deck = shuffleTiles(zombiesTileRepository, rng);
+        var ret = new ZombiesMap(mapTileRepository);
+        var deck = shuffleTiles(tileRepository, rng);
 
         var exits = new ArrayList<ZombiesCoordinate>();
-        placeTile(zombiesTileRepository.findByName(ZombiesTile.TOWN_SQUARE), ret, exits, zombiesMapTileRepository, rng);
+        placeTile(tileRepository.findByName(ZombiesTile.TOWN_SQUARE), ret, exits, mapTileRepository, rng);
         for(var tile : deck) {
-            placeTile(tile, ret, exits, zombiesMapTileRepository, rng);
+            LOGGER.trace(ret.dump());
+            placeTile(tile, ret, exits, mapTileRepository, rng);
         }
 
-        return zombiesMapRepository.save(ret);
+        return ret;
     }
 
     private static void placeTile(
@@ -48,10 +47,10 @@ public class ZombiesMapGenerator {
         if(exits.size() == 0) {
             if(tile.getName().equals(ZombiesTile.TOWN_SQUARE)) {
                 var topLeft = new ZombiesCoordinate(90,90);
-                mapTileRepository.save(
-                        map.add(topLeft, tile, ZombiesMapTile.TileRotation.ROT_0)
-                );
-                addExits(map, tile, exits, topLeft, ZombiesMapTile.TileRotation.ROT_0);
+                var mapTile = new ZombiesMapTile(tile, topLeft, ZombiesMapTile.TileRotation.ROT_0);
+                mapTile = mapTileRepository.save(mapTile);
+                map.add(mapTile);
+                addExits(map, tile, exits, topLeft, ZombiesMapTile.TileRotation.ROT_0, mapTileRepository);
             }
             else {
                 throw new IllegalStateException();
@@ -78,13 +77,13 @@ public class ZombiesMapGenerator {
                 for(var rotation : ZombiesMapTile.TileRotation.values()) {
                     //----- Check to see if this is a valid placement; ie, there is not already a tile there (shouldn't
                     //      happen) and all of the new tile's exits align either with an existing exit or are open
-                    if(map.checkValidPlacement(targetTopLeft, tile, rotation)) {
-                        mapTileRepository.save(
-                                map.add(targetTopLeft, tile, rotation)
-                        );
+                    var mapTile = new ZombiesMapTile(tile, targetTopLeft, rotation);
+                    if(checkValidPlacement(targetTopLeft, mapTile, map, mapTileRepository)) {
+                        mapTile = mapTileRepository.saveAndFlush(mapTile);
+                        map.add(mapTile);
                         //----- Remove the exit we aligned to
                         exitToRemove = exit;
-                        addExits(map, tile, exits, targetTopLeft, rotation);
+                        addExits(map, tile, exits, targetTopLeft, rotation, mapTileRepository);
                         break;
                     }
                 }
@@ -107,7 +106,8 @@ public class ZombiesMapGenerator {
             @NotNull ZombiesTile tile,
             @NotNull List<ZombiesCoordinate> exits,
             @NotNull ZombiesCoordinate tileTopLeft,
-            @NotNull ZombiesMapTile.TileRotation rotation
+            @NotNull ZombiesMapTile.TileRotation rotation,
+            @NotNull ZombiesMapTileRepository mapTileRepository
     ) {
         var tileExits = tile.getExits();
         for(var tileExit : tileExits) {
@@ -137,7 +137,8 @@ public class ZombiesMapGenerator {
                 default -> throw new IllegalArgumentException();
             }
 
-            if(map.getSquareType(alignedExitCoord) == null) {
+            var mapTileId = map.getMapTileId(alignedExitCoord);
+            if(mapTileId == null) {
                 exits.add(tileExitCoord);
             }
         }
@@ -198,5 +199,52 @@ public class ZombiesMapGenerator {
         ret.add(index, helipad);
 
         return ret;
+    }
+    private static boolean checkValidPlacement(
+            @NotNull ZombiesCoordinate xy,
+            @NotNull ZombiesMapTile mapTile,
+            @NotNull ZombiesMap map,
+            ZombiesMapTileRepository mapTileRepository
+    ) {
+        return checkValidPlacement(xy.getX(), xy.getY(), mapTile, map, mapTileRepository);
+    }
+    private static boolean checkValidPlacement(
+            int x,
+            int y,
+            @NotNull ZombiesMapTile testTile,
+            @NotNull ZombiesMap map,
+            ZombiesMapTileRepository mapTileRepository
+    ) {
+        if(x%TILE_SIZE == 0 && y%TILE_SIZE == 0) {
+            var topLeft = new ZombiesCoordinate(x, y);
+            //----- Ensure that there is not already a tile here
+            if (!map.getMapTileIds().containsKey(topLeft)) {
+                //----- Ensure that all of this tile's exits align either with an exit or empty space
+                return
+                        // NORTH
+                        testAdjacent(map, testTile, x+1, y-1, testTile.get(1,0) == ZombiesTile.SquareType.ROAD, mapTileRepository)
+                                // EAST
+                                && testAdjacent(map, testTile, x+3, y+1, testTile.get(2,1) == ZombiesTile.SquareType.ROAD, mapTileRepository)
+                                // WEST
+                                && testAdjacent(map, testTile, x-1, y+1, testTile.get(0,1) == ZombiesTile.SquareType.ROAD, mapTileRepository)
+                                // SOUTH
+                                && testAdjacent(map, testTile, x+1, y+3, testTile.get(1,2) == ZombiesTile.SquareType.ROAD, mapTileRepository)
+                        ;
+            }
+        }
+        return false;
+    }
+    private static boolean testAdjacent(ZombiesMap map, ZombiesMapTile testTile, int x, int y, boolean isRoad, ZombiesMapTileRepository mapTileRepository) {
+        ZombiesTile.SquareType targetSquare = null;
+        var targetTileId = map.getMapTileId(new ZombiesCoordinate(x,y));
+        if(targetTileId != null) {
+            var targetTile = mapTileRepository.findById(targetTileId).orElseThrow();
+            targetSquare = targetTile.getSquareType(x,y);
+        }
+
+        if(isRoad) {
+            return targetSquare == null || targetSquare == ZombiesTile.SquareType.ROAD;
+        }
+        return targetSquare != ZombiesTile.SquareType.ROAD;
     }
 }
