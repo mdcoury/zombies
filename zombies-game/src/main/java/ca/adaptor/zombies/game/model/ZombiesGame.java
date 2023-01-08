@@ -1,15 +1,16 @@
 package ca.adaptor.zombies.game.model;
 
-import ca.adaptor.zombies.game.repositories.*;
+import ca.adaptor.zombies.game.repositories.ZombiesGameDataRepository;
+import ca.adaptor.zombies.game.repositories.ZombiesMapRepository;
+import ca.adaptor.zombies.game.repositories.ZombiesMapTileRepository;
 import jakarta.persistence.*;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.ToString;
+import lombok.*;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
 
 import java.util.*;
 
@@ -29,17 +30,6 @@ public class ZombiesGame {
 
     public static final int MAX_NUM_EVENT_CARDS = 3;
 
-    @Transient @Autowired
-    private ZombiesGameRepository gameRepository;
-    @Transient @Autowired
-    private ZombiesGameDataRepository gameDataRepository;
-    @Transient @Autowired
-    private ZombiesPlayerRepository playerRepository;
-    @Transient @Autowired
-    private ZombiesMapRepository mapRepository;
-    @Transient @Autowired
-    private ZombiesMapTileRepository mapTileRepository;
-
     @Getter
     @Id
     @GeneratedValue
@@ -56,27 +46,51 @@ public class ZombiesGame {
     private Set<ZombiesCoordinate> zombieLocations = new HashSet<>();
     /** Maps a player-id to a game-data-id */
     @ElementCollection(fetch = FetchType.EAGER)
-    private Map<UUID, UUID> playerDataId = new HashMap<>();
+    private Map<UUID, UUID> playerDataIds = new HashMap<>();
     @Getter
     @ElementCollection(fetch = FetchType.EAGER)
-    private List<UUID> playerIds = new ArrayList<>();
+    private Set<UUID> playerIds = new HashSet<>();
     @Getter
     @Column(name = COLUMN_GAME_MAP_ID, nullable = false, updatable = false, unique = true)
     private UUID mapId;
     @Getter
-    @Column(name = COLUMN_GAME_INITIALIZED, nullable = false)
-    private boolean initialized = false;
+    @Column(name = COLUMN_GAME_POPULATED, nullable = false)
+    private boolean populated = false;
     @Getter
     @Column(name =  COLUMN_GAME_TURN, nullable = false)
     private int turn = 0;
+    @Getter @Setter
+    @Column(name = COLUMN_GAME_RUNNING, nullable = false)
+    private boolean running = false;
 
-    public ZombiesGame(@NotNull ZombiesMap map) {
-        this.mapId = map.getId();
+    @Autowired @Transient
+    private ZombiesGameDataRepository gameDataRepository;
+    @Autowired @Transient
+    private ZombiesMapRepository mapRepository;
+    @Autowired @Transient
+    private ZombiesMapTileRepository mapTileRepository;
+
+    @Transient
+    private final Map<UUID, ZombiesGameData> gameData = new HashMap<>();
+    @Transient
+    private ZombiesMap theMap;
+
+    public ZombiesGame(@NotNull UUID mapId) {
+        this.mapId = mapId;
+    }
+
+    public int getNumberOfPlayers() {
+        assert playerDataIds.size() == playerIds.size();
+        return playerIds.size();
     }
 
     @NotNull
     public ZombiesGameData getPlayerData(@NotNull UUID playerId) {
-        return gameDataRepository.findById(playerId).orElseThrow();
+        if(!gameData.containsKey(playerId)) {
+            var playerData = gameDataRepository.findById(playerDataIds.get(playerId)).orElseThrow();
+            gameData.put(playerId, playerData);
+        }
+        return gameData.get(playerId);
     }
 
     public void incrementTurn() { turn++; }
@@ -91,10 +105,20 @@ public class ZombiesGame {
         return lifeLocations.contains(coord);
     }
 
-    private void populateMap() {
-        assert initialized;
+    private ZombiesMap getMap() {
+        assert mapRepository != null;
+        assert mapId != null;
 
-        var map = mapRepository.findById(mapId).orElseThrow();
+        if(theMap == null) {
+            theMap = mapRepository.findById(mapId).orElseThrow();
+        }
+        return theMap;
+    }
+
+    private void populateMap() {
+        assert populated;
+
+        var map = getMap();
         LOGGER.trace("[game=" + getId() + "] Populating map (" + mapId + ")...");
         //----- Go through all of the map-tiles and place its items
         for(var mapTileId : map.getMapTileIds().values()) {
@@ -117,8 +141,8 @@ public class ZombiesGame {
                         ));
                     }
                 } else {
-                    //----- This is a street piece -- ie, not a building -- so it should have one zombie at each exit, no
-                    //      bullets and no life
+                    //----- This is a street piece -- ie, not a building -- so it should have one zombie at each exit,
+                    //      no bullets and no life
                     populateStreet(mapTile);
                 }
             }
@@ -126,7 +150,7 @@ public class ZombiesGame {
     }
 
     private void populateStreet(@NotNull ZombiesMapTile mapTile) {
-        assert initialized;
+        assert populated;
 
         LOGGER.trace("[game=" + getId() + "] Populating street: " + mapTile.getTile().getName());
 
@@ -155,7 +179,7 @@ public class ZombiesGame {
     }
 
     private void populateBuilding(@NotNull ZombiesMapTile mapTile) {
-        assert initialized;
+        assert populated;
 
         LOGGER.trace("[game=" + getId() + "] Populating building: " + mapTile.getTile().getName());
 
@@ -196,33 +220,49 @@ public class ZombiesGame {
         }
     }
 
-    public boolean addPlayer(@NotNull ZombiesPlayer player) {
-        if(!isInitialized()) {
-            if (playerIds.size() < MAX_PLAYERS) {
-                LOGGER.debug("[game=" + getId() + "] Adding player: " + player);
-                playerIds.add(player.getId());
-                return true;
+    @Nullable
+    public UUID addPlayer(@NotNull UUID playerId) {
+        if(!isRunning()) {
+            if(!playerIds.contains(playerId)) {
+                assert !playerDataIds.containsKey(playerId);
+                if (playerIds.size() < MAX_PLAYERS) {
+                    LOGGER.debug("[game=" + getId() + "] Adding player: " + playerId);
+                    playerIds.add(playerId);
+                    var map = getMap();
+                    var playerData = new ZombiesGameData(map.getTownSquareLocation());
+                    playerData = gameDataRepository.saveAndFlush(playerData);
+                    playerDataIds.put(playerId, playerData.getId());
+                    return playerData.getId();
+                }
+                LOGGER.debug("[game=" + getId() + "] Game is full: unable to add player: " + playerId);
             }
-            LOGGER.debug("[game=" + getId() + "] Game is full: unable to add player " + player);
+            else {
+                assert playerDataIds.containsKey(playerId);
+                LOGGER.debug("[game=" + getId() + "] Player has already joined this game: " + playerId);
+            }
         }
         else {
-            LOGGER.debug("[game=" + getId() + "] Game is already started: unable to add player " + player);
+            LOGGER.debug("[game=" + getId() + "] Game is already running! Unable to add player: " + playerId);
         }
-        return false;
+        return null;
     }
 
-    public boolean initialize() {
-        if(initialized) {
-            throw new IllegalStateException("This game (" + getId() + ") is already initialized!");
-        }
-        if(playerIds.size() < MIN_PLAYERS) {
-            LOGGER.warn("[game=" + getId() + "] Not enough players in game!");
-            return false;
+    public void autowire(@NotNull AutowireCapableBeanFactory autowireFactory) {
+        autowireFactory.autowireBean(this);
+    }
+
+    public boolean populate() {
+        assert gameDataRepository != null;
+        assert mapRepository != null;
+        assert mapTileRepository != null;
+
+        if(populated) {
+            throw new IllegalStateException("This game (" + getId() + ") is already populated!");
         }
 
-        LOGGER.debug("[game=" + getId() + "] Initializing game...");
+        LOGGER.debug("[game=" + getId() + "] Populating game...");
 
-        initialized = true;
+        populated = true;
         populateMap();
         return true;
     }

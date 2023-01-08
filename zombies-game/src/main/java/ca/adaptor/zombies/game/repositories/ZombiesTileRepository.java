@@ -6,12 +6,15 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface ZombiesTileRepository  extends JpaRepository<ZombiesTile, UUID> {
+    @Query("select g.id from #{#entityName} g")
+    Optional<List<UUID>> findAllIds();
     @Query("select t.name from #{#entityName} t")
-    List<String> findAllNames();
-    ZombiesTile findByName(String name);
+    Optional<List<String>> findAllNames();
+    Optional<ZombiesTile> findByName(String name);
     boolean existsByName(String name);
 }

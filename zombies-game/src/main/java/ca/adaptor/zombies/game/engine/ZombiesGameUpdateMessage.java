@@ -6,6 +6,8 @@ import lombok.*;
 
 import java.util.*;
 
+
+@Getter @Setter
 @RequiredArgsConstructor
 @ToString
 @EqualsAndHashCode
@@ -16,27 +18,15 @@ public class ZombiesGameUpdateMessage {
         MOVEMENT,
         ZOMBIES
     }
-    @Getter
     private final UUID messageId = UUID.randomUUID();
-    @Getter
     private final UUID gameId;
-    @Getter
     private final UUID engineId;
-    @Getter
-    private final int turn;
-    @Getter
     private final long serialNumber;
-    @Getter
+    private final int turn;
     private final Phase phase;
 
-    @Getter @Setter
-    private ZombiesGameData playerData = null;
-    @SuppressWarnings("FieldMayBeFinal")
-    @Getter
-    private Map<ZombiesCoordinate, ZombiesCoordinate> zombieMovements = new HashMap<>();
-    @SuppressWarnings("FieldMayBeFinal")
-    @Getter
-    private Set<ZombiesCoordinate> zombieKills = new HashSet<>();
-    @Getter @Setter
-    private Integer roll = null;
+    private ZombiesGameData playerData;
+    private Map<ZombiesCoordinate, ZombiesCoordinate> zombieMovements;
+    private Set<ZombiesCoordinate> zombieKills;
+    private Integer roll;
 }

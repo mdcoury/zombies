@@ -2,7 +2,9 @@ package ca.adaptor.zombies.game.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -26,11 +28,15 @@ public class ZombiesGameData {
     private ZombiesCoordinate location;
     @Column(name = COLUMN_GAME_DATA_CARD_IDS, nullable = false)
     @ElementCollection(fetch = FetchType.EAGER)
-    private List<UUID> eventCardIds;
+    private List<UUID> eventCardIds = new ArrayList<>();
     @Column(name = COLUMN_GAME_DATA_NUM_BULLETS, nullable = false)
-    private int numBullets;
+    private int numBullets = 3;
     @Column(name = COLUMN_GAME_DATA_NUM_LIFE, nullable = false)
-    private int numLife;
+    private int numLife = 3;
+
+    public ZombiesGameData(@NotNull ZombiesCoordinate location) {
+        this.location = location;
+    }
 
     public boolean isPlayerDead() {
         return numLife <= 0;

@@ -49,7 +49,7 @@ public class ZombiesMapTile {
     @Transient
     private boolean cached = false;
 
-    public ZombiesMapTile(@NotNull ZombiesTile tile, @NotNull ZombiesCoordinate topLeft, TileRotation rotation) {
+    public ZombiesMapTile(@NotNull ZombiesTile tile, @NotNull ZombiesCoordinate topLeft, @NotNull TileRotation rotation) {
         this.tile = tile;
         this.topLeft = topLeft;
         this.rotation = rotation;

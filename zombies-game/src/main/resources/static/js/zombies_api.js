@@ -76,8 +76,27 @@ function api_games_join_put(gameId, playerId, successFn, errorFn, async = true) 
     });
 }
 
-function api_games_init_put(gameId, successFn, errorFn, async = true) {
-    var url = baseUrl + "games/" + gameId + "/init";
+function api_games_populate_put(gameId, successFn, errorFn, async = true) {
+    var url = baseUrl + "games/" + gameId + "/populate";
+    var request = new Object();
+
+    jQuery.ajax({
+        url: url,
+        data: JSON.stringify(request),
+        contentType: 'application/json',
+        datatype: 'json',
+        context: document.body,
+        type: 'PUT',
+        async: async,
+        headers: {
+        },
+        success: successFn,
+        error: errorFn
+    });
+}
+
+function api_games_start_put(gameId, successFn, errorFn, async = true) {
+    var url = baseUrl + "games/" + gameId + "/start";
     var request = new Object();
 
     jQuery.ajax({
