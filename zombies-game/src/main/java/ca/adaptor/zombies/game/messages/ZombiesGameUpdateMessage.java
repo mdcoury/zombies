@@ -1,4 +1,4 @@
-package ca.adaptor.zombies.game.engine;
+package ca.adaptor.zombies.game.messages;
 
 import ca.adaptor.zombies.game.model.ZombiesCoordinate;
 import ca.adaptor.zombies.game.model.ZombiesGameData;
@@ -13,7 +13,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @ToString
 @EqualsAndHashCode
-public class ZombiesGameUpdateMessage {
+public class ZombiesGameUpdateMessage implements IZombiesWsMessage {
     public enum Phase {
         COMBAT,
         DRAW_CARDS,
@@ -21,8 +21,8 @@ public class ZombiesGameUpdateMessage {
         ZOMBIES
     }
     private final UUID messageId = UUID.randomUUID();
+    private final Type type = Type.UPDATE;
     private final UUID gameId;
-    private final UUID engineId;
     private final long serialNumber;
     private final int turn;
     private final Phase phase;

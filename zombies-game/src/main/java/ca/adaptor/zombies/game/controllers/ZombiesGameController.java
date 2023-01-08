@@ -5,6 +5,7 @@ import ca.adaptor.zombies.game.engine.ZombiesGameEngine;
 import ca.adaptor.zombies.game.model.ZombiesGame;
 import ca.adaptor.zombies.game.model.ZombiesGameData;
 import ca.adaptor.zombies.game.repositories.*;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,7 +26,8 @@ import static ca.adaptor.zombies.game.controllers.ZombiesControllerConstants.PAT
 @RequestMapping(PATH_GAMES)
 public class ZombiesGameController {
     private static final Logger LOGGER = LoggerFactory.getLogger(ZombiesGameController.class);
-    private static final ExecutorService theExecutor = Executors.newWorkStealingPool();
+
+    private final ExecutorService theExecutor = Executors.newWorkStealingPool();
 
     @Autowired
     private ZombiesGameRepository gameRepository;
@@ -123,7 +125,6 @@ public class ZombiesGameController {
             if(!game.isRunning()) {
                 engine.autowire(autowireFactory);
                 theExecutor.submit(engine::runGame);
-
             }
             return ResponseEntity.ok(engine.getGameEngineId());
         }

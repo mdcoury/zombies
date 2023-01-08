@@ -1,5 +1,6 @@
 package ca.adaptor.zombies.game.engine;
 
+import ca.adaptor.zombies.game.messages.ZombiesGameUpdateMessage;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

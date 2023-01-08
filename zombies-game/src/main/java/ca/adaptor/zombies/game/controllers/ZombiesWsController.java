@@ -2,7 +2,7 @@ package ca.adaptor.zombies.game.controllers;
 
 import ca.adaptor.zombies.game.engine.IZombiesGameBroker;
 import ca.adaptor.zombies.game.engine.ZombiesGameEngine;
-import ca.adaptor.zombies.game.engine.ZombiesGameUpdateMessage;
+import ca.adaptor.zombies.game.messages.ZombiesGameUpdateMessage;
 import ca.adaptor.zombies.game.messages.AbstractZombiesWsMessage;
 import ca.adaptor.zombies.game.messages.IZombiesWsMessage;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -56,11 +56,60 @@ public class ZombiesWsController implements WebSocketConfigurer {
         private final UUID handlerId = UUID.randomUUID();
         private final ObjectMapper mapper = new ObjectMapper();
 
-        //----- ZombiesGameBrokerInterface.MessageHandler -----//
+        private <M extends IZombiesWsMessage> void sendMessage(
+                @NotNull M outMessage,
+                @NotNull UUID brokerId
+        ) throws IOException {
+            getSessionByBrokerId(
+                    brokerId
+            ).sendMessage(
+                    new TextMessage(
+                            mapper.writeValueAsString(outMessage)
+                    )
+            );
+        }
+
+        private void processHelloMessage(@NotNull String sessionId, @NotNull AbstractZombiesWsMessage.Hello hello) {
+            assert theSessionsById.containsKey(sessionId);
+
+            var engine = ZombiesGameEngine.getInstance(hello.getGameId());
+            var broker = engine.getBroker(hello.getPlayerId());
+            if(broker != null) {
+                if(!theBrokersBySessionId.containsKey(sessionId)) {
+                    LOGGER.trace("Processed HELLO: sessionId=" + sessionId + ", brokerId=" + broker.getBrokerId());
+                    theBrokersBySessionId.put(sessionId, broker);
+                    theSessionIdsByBrokerId.put(broker.getBrokerId(), sessionId);
+                    broker.setMessageHandler(this);
+                }
+                else {
+                    throw new IllegalArgumentException();
+                }
+            }
+            else {
+                throw new IllegalArgumentException();
+            }
+        }
+
+        private void processRequestReply(@NotNull String sessionId, @NotNull AbstractZombiesWsMessage.AbstractRequestMessage reply) {
+            assert theSessionsById.containsKey(sessionId);
+            assert theBrokersBySessionId.containsKey(sessionId);
+            assert theSessionIdsByBrokerId.containsKey(theBrokersBySessionId.get(sessionId).getBrokerId());
+            assert messageCallbacks.containsKey(reply.getMessageId());
+
+            if(theBrokersBySessionId.containsKey(sessionId)) {
+                messageCallbacks.get(reply.getMessageId()).accept(reply);
+            }
+            else {
+                throw new IllegalArgumentException();
+            }
+        }
+
+//region ZombiesGameBrokerInterface.MessageHandler
 
         @Override
-        public @NotNull <M extends IZombiesWsMessage> M send(@NotNull M outMessage, @NotNull UUID brokerId) {
-            assert outMessage.getType() == IZombiesWsMessage.Type.GAME;
+        @NotNull
+        public <M extends IZombiesWsMessage> M send(@NotNull M outMessage, @NotNull UUID brokerId) {
+            assert outMessage.getType() != IZombiesWsMessage.Type.HELLO;
 
             LOGGER.trace("Sending message: " + outMessage);
             var ret = new AtomicReference<M>();
@@ -68,7 +117,7 @@ public class ZombiesWsController implements WebSocketConfigurer {
             var latch = new CountDownLatch(1);
             messageCallbacks.put(messageId, (inMessage) -> {
                 if(inMessage == null || !inMessage.getMessageId().equals(messageId)) {
-                    throw new IllegalArgumentException();
+                    throw new IllegalArgumentException("Invalid incoming message: " + inMessage);
                 }
 
                 LOGGER.trace("Received reply: " + inMessage);
@@ -89,31 +138,19 @@ public class ZombiesWsController implements WebSocketConfigurer {
             return ret.get();
         }
 
-        private <M extends IZombiesWsMessage> void sendMessage(@NotNull M outMessage, @NotNull UUID brokerId) throws IOException {
-            getSessionByBrokerId(
-                    brokerId
-            ).sendMessage(
-                    new TextMessage(
-                            mapper.writeValueAsString(outMessage)
-                    )
-            );
-        }
-
+        @Override
         public void send(@NotNull ZombiesGameUpdateMessage update, @NotNull UUID brokerId) {
             try {
-                getSessionByBrokerId(
-                        brokerId
-                ).sendMessage(
-                        new TextMessage(
-                                mapper.writeValueAsString(update)
-                        )
-                );
-            } catch (IOException e) {
+                sendMessage(update, brokerId);
+            }
+            catch (IOException e) {
                 throw new RuntimeException(e);
             }
         }
 
-        //----- WebSocketHandler -----//
+//endregion
+
+//region WebSocketHandler
 
         @Override
         public void afterConnectionEstablished(@NotNull WebSocketSession session) {
@@ -131,48 +168,13 @@ public class ZombiesWsController implements WebSocketConfigurer {
                 LOGGER.trace("handleMessage: session=" + session + ", message=" + message + ", handler-id=" + handlerId);
                 var wsMessage = mapper.readValue(message.getPayload().toString(), AbstractZombiesWsMessage.class);
                 switch (wsMessage.getType()) {
-                    case HELLO -> processHelloMessage(session.getId(), (AbstractZombiesWsMessage.HelloMessage) wsMessage);
-                    case GAME -> processGameMessage(session.getId(), (AbstractZombiesWsMessage.GameMessage) wsMessage);
+                    case HELLO -> processHelloMessage(session.getId(), (AbstractZombiesWsMessage.Hello) wsMessage);
+                    case REQUEST -> processRequestReply(session.getId(), (AbstractZombiesWsMessage.AbstractRequestMessage) wsMessage);
                     default -> throw new IllegalArgumentException();
                 }
             }
             else {
                 throw new IllegalStateException();
-            }
-        }
-
-        private void processHelloMessage(@NotNull String sessionId, @NotNull AbstractZombiesWsMessage.HelloMessage helloMessage) {
-            assert theSessionsById.containsKey(sessionId);
-
-            var engine = ZombiesGameEngine.getInstance(helloMessage.getGameId());
-            var broker = engine.getBroker(helloMessage.getPlayerId());
-            if(broker != null) {
-                if(!theBrokersBySessionId.containsKey(sessionId)) {
-                    LOGGER.trace("Processed HELLO: sessionId=" + sessionId + ", brokerId=" + broker.getBrokerId());
-                    theBrokersBySessionId.put(sessionId, broker);
-                    theSessionIdsByBrokerId.put(broker.getBrokerId(), sessionId);
-                    broker.setMessageHandler(this);
-                }
-                else {
-                    throw new IllegalArgumentException();
-                }
-            }
-            else {
-                throw new IllegalArgumentException();
-            }
-        }
-
-        private void processGameMessage(@NotNull String sessionId, @NotNull AbstractZombiesWsMessage.GameMessage message) {
-            assert theSessionsById.containsKey(sessionId);
-            assert theBrokersBySessionId.containsKey(sessionId);
-            assert theSessionIdsByBrokerId.containsKey(theBrokersBySessionId.get(sessionId).getBrokerId());
-            assert messageCallbacks.containsKey(message.getMessageId());
-
-            if(theBrokersBySessionId.containsKey(sessionId)) {
-                messageCallbacks.get(message.getMessageId()).accept(message);
-            }
-            else {
-                throw new IllegalArgumentException();
             }
         }
 
@@ -198,5 +200,8 @@ public class ZombiesWsController implements WebSocketConfigurer {
         public boolean supportsPartialMessages() {
             return false;
         }
+
+//endregion
+
     }
 }

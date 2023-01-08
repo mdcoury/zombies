@@ -1,8 +1,8 @@
 package ca.adaptor.zombies.game.engine;
 
 import ca.adaptor.zombies.game.messages.IZombiesWsMessage;
+import ca.adaptor.zombies.game.messages.ZombiesGameUpdateMessage;
 import ca.adaptor.zombies.game.model.ZombiesDirection;
-import ca.adaptor.zombies.game.model.ZombiesPlayer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -17,12 +17,15 @@ public interface IZombiesGameBroker {
     }
 
     @NotNull UUID getBrokerId();
+    void testForHandler(@Nullable Runnable callback);
 
-    void setMessageHandler(@NotNull IZombiesGameBroker.IMessageHandler messageHandler);
+    void setMessageHandler(@NotNull IMessageHandler messageHandler);
     @Nullable IZombiesGameBroker.IMessageHandler getMessageHandler();
-    /** @param playerId the {@link UUID} of the {@link ZombiesPlayer} for this broker. */
-    void setPlayerId(@NotNull UUID playerId);
-    @Nullable UUID getPlayerId();
+
+//    /** @param playerId the {@link UUID} of the {@link ZombiesPlayer} for this broker. */
+//    void setPlayerId(@NotNull UUID playerId);
+//    @Nullable UUID getPlayerId();
+
     /** Blocking call to the player/client for them to "roll" the dice */
     void requestRoll();
     /**

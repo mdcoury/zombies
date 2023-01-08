@@ -1,60 +1,29 @@
 function soloGame() {
-    api_players_post(
-        function(data) {
-            $(document).find("#newPlayerId").text(data).show();
-            api_games_post(
-                function(data) {
-                    $(document).find("#newGameId").text(data).show();
-                    api_games_join_put(
-                        $(document).find("#newGameId").text(),
-                        $(document).find("#newPlayerId").text(),
-                        function(data) {
-                            $(document).find("#joinGameResult").text(data).show();
-                            api_games_init_put(
-                                $(document).find("#newGameId").text(),
-                                function(data) {
-                                    $(document).find("#initGameResult").text(data).show();
-                                    api_games_start_put(
-                                        $(document).find("#newGameId").text(),
-                                        function(data) {
-                                            $(document).find("#startGameResult").text(data).show();
-                                            socket = new WebSocket("ws://localhost:8080/zombies/ws");
-                                            socket.onopen = function(event) {
-                                                $(document).find("#socketTest").text("fart").show();
-                                            }
-                                            socket.onclose = function(event) {
-                                                $(document).find("#socketTest").text("breath").show();
-                                            }
-                                        },
-                                        function(jqXHR, textStatus, errorThrown) {
-                                            $(document).find("#startGameResult").text("Failed to start game.").show();
-                                        }
-                                    );
-                                },
-                                function(jqXHR, textStatus, errorThrown) {
-                                    $(document).find("#initGameResult").text("Failed to initialize game.").show();
+    createPlayer(
+        function() {
+            createGame(
+                function() {
+                    joinGame(
+                        function() {
+                            populateGame(
+                                function() {
+                                    startGame();
                                 }
-                            );
-                        },
-                        function(jqXHR, textStatus, errorThrown) {
-                            $(document).find("#joinGameResult").text("Failed to join game.").show();
+                            )
                         }
-                    );
-                },
-                function(jqXHR, textStatus, errorThrown) {
-                    $(document).find("#newGameId").text("Failed to create new game.").show();
+                    )
                 }
-            );
-        },
-        function(jqXHR, textStatus, errorThrown) {
-            $(document).find("#newPlayerId").text("Failed to create new player.").show();
+            )
         }
     );
 }
-function createPlayer() {
+function createPlayer(successFn) {
     api_players_post(
         function(data) {
             $(document).find("#newPlayerId").text(data).show();
+            if(successFn) {
+                successFn();
+            }
         },
         function(jqXHR, textStatus, errorThrown) {
             $(document).find("#newPlayerId").text("Failed to create new player.").show();
@@ -73,10 +42,13 @@ function createMap() {
     );
 }
 
-function createGame() {
+function createGame(successFn) {
     api_games_post(
         function(data) {
             $(document).find("#newGameId").text(data).show();
+            if(successFn) {
+                successFn();
+            }
         },
         function(jqXHR, textStatus, errorThrown) {
             $(document).find("#newGameId").text("Failed to create new game.").show();
@@ -84,12 +56,15 @@ function createGame() {
     );
 }
 
-function joinGame() {
+function joinGame(successFn) {
     api_games_join_put(
         $(document).find("#newGameId").text(),
         $(document).find("#newPlayerId").text(),
         function(data) {
             $(document).find("#joinGameResult").text(data).show();
+            if(successFn) {
+                successFn();
+            }
         },
         function(jqXHR, textStatus, errorThrown) {
             $(document).find("#joinGameResult").text("Failed to join game.").show();
@@ -97,11 +72,14 @@ function joinGame() {
     );
 }
 
-function populateGame() {
+function populateGame(successFn) {
     api_games_populate_put(
         $(document).find("#newGameId").text(),
         function(data) {
             $(document).find("#initGameResult").text(data).show();
+            if(successFn) {
+                successFn();
+            }
         },
         function(jqXHR, textStatus, errorThrown) {
             $(document).find("#initGameResult").text("Failed to initialize game.").show();
@@ -114,25 +92,12 @@ function startGame() {
         $(document).find("#newGameId").text(),
         function(data) {
             $(document).find("#startGameResult").text(data).show();
-            socket = new WebSocket("ws://localhost:8080/zombies/ws");
-            socket.onopen = function(event) {
-                $(document).find("#socketTest").text("Sending hello...").show();
-                sendHello(socket);
-            }
-            socket.onclose = function(event) {
-                $(document).find("#socketTest").text("Socket closed.").show();
-            }
+            localStorage.setItem("game-id", $(document).find("#newGameId").text());
+            localStorage.setItem("player-id", $(document).find("#newPlayerId").text());
+            location.href = "board.html";
         },
         function(jqXHR, textStatus, errorThrown) {
             $(document).find("#startGameResult").text("Failed to start game.").show();
         }
-    );
-}
-
-function sendHello(socket) {
-    gameId = $(document).find("#newGameId").text();
-    playerId = $(document).find("#newPlayerId").text();
-    socket.send(
-        '{"@type": "HelloMessage", "playerId": "'+playerId+'", "gameId": "'+gameId+'", "type": "HELLO"}'
     );
 }

@@ -1,5 +1,6 @@
 package ca.adaptor.zombies.game.engine;
 
+import ca.adaptor.zombies.game.messages.ZombiesGameUpdateMessage;
 import ca.adaptor.zombies.game.model.*;
 import ca.adaptor.zombies.game.repositories.ZombiesGameDataRepository;
 import ca.adaptor.zombies.game.repositories.ZombiesGameRepository;
@@ -21,10 +22,11 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
 
-import static ca.adaptor.zombies.game.engine.ZombiesGameUpdateMessage.Phase.*;
+import static ca.adaptor.zombies.game.messages.ZombiesGameUpdateMessage.Phase.*;
 import static ca.adaptor.zombies.game.model.ZombiesGame.MAX_NUM_EVENT_CARDS;
 
 public class ZombiesGameEngine {
+//region Static methods and fields
     private static class Registry {
         private final ReadWriteLock registryLock = new ReentrantReadWriteLock();
 
@@ -140,6 +142,7 @@ public class ZombiesGameEngine {
     public static void releaseInstance(@NotNull UUID engineId) {
         theRegistry.removeEngineById(engineId);
     }
+//endregion
 
     private final long rngSeed = Long.parseLong(System.getProperty("zombies.rng.seed", String.valueOf(System.currentTimeMillis())));
     private final Random rng = new Random(rngSeed);
@@ -151,7 +154,7 @@ public class ZombiesGameEngine {
     private long serialNumberCtr = 0;
 
     private final Map<UUID, IZombiesGameBroker> theBrokersByPlayerId = new HashMap<>();
-
+//region Autowired fields
     @Autowired
     private ZombiesMapRepository mapRepository;
     @Autowired
@@ -160,7 +163,7 @@ public class ZombiesGameEngine {
     private ZombiesGameRepository gameRepository;
     @Autowired
     private ZombiesGameDataRepository gameDataRepository;
-
+//endregion
     private ZombiesMap theMap;
 
     private <B extends IZombiesGameBroker> ZombiesGameEngine(
@@ -261,6 +264,10 @@ public class ZombiesGameEngine {
 
     private void waitForPlayersToConnect() throws InterruptedException {
         var latch = new CountDownLatch(theGame.getNumberOfPlayers());
+        for(var broker : theBrokersByPlayerId.values()) {
+            broker.testForHandler(latch::countDown);
+        }
+        // TODO: Add timeout
         latch.await();
         LOGGER.trace("All players have connected");
     }
@@ -357,7 +364,7 @@ public class ZombiesGameEngine {
 
     @NotNull
     private ZombiesGameUpdateMessage createUpdateMessage(ZombiesGameUpdateMessage.Phase phase) {
-        return new ZombiesGameUpdateMessage(theGame.getId(), gameEngineId, serialNumberCtr++, theGame.getTurn(), phase);
+        return new ZombiesGameUpdateMessage(theGame.getId(), serialNumberCtr++, theGame.getTurn(), phase);
     }
 
     private void broadcastUpdateMessage(@NotNull ZombiesGameUpdateMessage update) {

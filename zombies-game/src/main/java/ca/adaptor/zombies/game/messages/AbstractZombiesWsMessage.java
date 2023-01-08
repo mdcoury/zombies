@@ -4,28 +4,36 @@ import ca.adaptor.zombies.game.model.ZombiesDirection;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.util.Set;
 import java.util.UUID;
 
+import static ca.adaptor.zombies.game.messages.IZombiesWsMessage.*;
+
+@ToString
+@EqualsAndHashCode
 @JsonIgnoreProperties(ignoreUnknown = true, allowGetters = true, allowSetters = true)
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME)
 @JsonSubTypes({
-        @JsonSubTypes.Type(value = AbstractZombiesWsMessage.HelloMessage.class, name = "HelloMessage"),
-        @JsonSubTypes.Type(value = AbstractZombiesWsMessage.RequestRollMessage.class, name = "RequestRollMessage"),
-        @JsonSubTypes.Type(value = AbstractZombiesWsMessage.RequestUseBulletsMessage.class, name = "RequestUseBulletsMessage"),
-        @JsonSubTypes.Type(value = AbstractZombiesWsMessage.RequestPlayerMovementMessage.class, name = "RequestPlayerMovementMessage"),
-        @JsonSubTypes.Type(value = AbstractZombiesWsMessage.RequestDiscardsMessage.class, name = "RequestDiscardsMessage"),
+        @JsonSubTypes.Type(value = AbstractZombiesWsMessage.Hello.class, name = HELLO),
+        @JsonSubTypes.Type(value = AbstractZombiesWsMessage.Goodbye.class, name = GOODBYE),
+        @JsonSubTypes.Type(value = AbstractZombiesWsMessage.RequestRoll.class, name = REQUEST_ROLL),
+        @JsonSubTypes.Type(value = AbstractZombiesWsMessage.RequestUseBullets.class, name = REQUEST_USE_BULLETS),
+        @JsonSubTypes.Type(value = AbstractZombiesWsMessage.RequestMovement.class, name = REQUEST_MOVEMENT),
+        @JsonSubTypes.Type(value = AbstractZombiesWsMessage.RequestDiscards.class, name = REQUEST_DISCARDS),
 })
 public abstract class AbstractZombiesWsMessage implements IZombiesWsMessage {
     @Getter @Setter
     private UUID messageId = UUID.randomUUID();
 
+    public static abstract class AbstractRequestMessage extends AbstractZombiesWsMessage {
+        @Getter @Setter
+        private Type type = Type.REQUEST;
+    }
+
     @NoArgsConstructor
-    public static class HelloMessage extends AbstractZombiesWsMessage {
+    public static class Hello extends AbstractZombiesWsMessage {
         @Getter @Setter
         private UUID playerId;
         @Getter @Setter
@@ -34,26 +42,31 @@ public abstract class AbstractZombiesWsMessage implements IZombiesWsMessage {
         private Type type = Type.HELLO;
     }
 
-    public static abstract class GameMessage extends AbstractZombiesWsMessage {
+    @NoArgsConstructor
+    public static class Goodbye extends AbstractZombiesWsMessage {
         @Getter @Setter
-        private Type type = Type.GAME;
+        private UUID playerId;
+        @Getter @Setter
+        private UUID gameId;
+        @Getter @Setter
+        private Type type = Type.BYE;
     }
     @NoArgsConstructor
-    public static class RequestRollMessage extends GameMessage {
+    public static class RequestRoll extends AbstractRequestMessage {
 
     }
     @NoArgsConstructor
-    public static class RequestUseBulletsMessage extends GameMessage {
+    public static class RequestUseBullets extends AbstractRequestMessage {
         @Getter @Setter
         private boolean usingBullets;
     }
     @NoArgsConstructor
-    public static class RequestPlayerMovementMessage extends GameMessage {
+    public static class RequestMovement extends AbstractRequestMessage {
         @Getter @Setter
         private ZombiesDirection direction;
     }
     @NoArgsConstructor
-    public static class RequestDiscardsMessage extends GameMessage {
+    public static class RequestDiscards extends AbstractRequestMessage {
         @Getter @Setter
         private Set<UUID> cardIds;
     }

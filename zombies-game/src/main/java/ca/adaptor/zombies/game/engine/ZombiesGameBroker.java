@@ -1,9 +1,10 @@
 package ca.adaptor.zombies.game.engine;
 
-import ca.adaptor.zombies.game.messages.AbstractZombiesWsMessage.RequestDiscardsMessage;
-import ca.adaptor.zombies.game.messages.AbstractZombiesWsMessage.RequestPlayerMovementMessage;
-import ca.adaptor.zombies.game.messages.AbstractZombiesWsMessage.RequestRollMessage;
-import ca.adaptor.zombies.game.messages.AbstractZombiesWsMessage.RequestUseBulletsMessage;
+import ca.adaptor.zombies.game.messages.AbstractZombiesWsMessage.RequestDiscards;
+import ca.adaptor.zombies.game.messages.AbstractZombiesWsMessage.RequestMovement;
+import ca.adaptor.zombies.game.messages.AbstractZombiesWsMessage.RequestRoll;
+import ca.adaptor.zombies.game.messages.AbstractZombiesWsMessage.RequestUseBullets;
+import ca.adaptor.zombies.game.messages.ZombiesGameUpdateMessage;
 import ca.adaptor.zombies.game.model.ZombiesDirection;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -15,6 +16,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 @NoArgsConstructor
 public class ZombiesGameBroker implements IZombiesGameBroker {
@@ -24,35 +27,76 @@ public class ZombiesGameBroker implements IZombiesGameBroker {
     private final UUID brokerId = UUID.randomUUID();
     @Getter @Setter
     private UUID playerId;
-    @Getter @Setter
-    private IMessageHandler messageHandler;
+    @Getter
+    private IMessageHandler messageHandler = null;
+    // TODO: This is a bit clunky...
+    private Lock callbackLock = new ReentrantLock();
+    private Runnable callbackFn = null;
 
-    //----- ZombiesGameBrokerInterface -----//
+//region ZombiesGameBrokerInterface
 
+    @Override
+    public void testForHandler(@Nullable Runnable callbackFn) {
+        callbackLock.lock();
+        try {
+            if (messageHandler == null) {
+                assert this.callbackFn == null;
+                this.callbackFn = callbackFn;
+            }
+        }
+        finally {
+            callbackLock.unlock();
+        }
+    }
+
+    @Override
+    public void setMessageHandler(@NotNull IMessageHandler messageHandler) {
+        if(this.messageHandler != null) {
+            throw new IllegalStateException();
+        }
+
+        callbackLock.lock();
+        try {
+            this.messageHandler = messageHandler;
+            if (callbackFn != null) {
+                callbackFn.run();
+            }
+        }
+        finally {
+            callbackLock.unlock();
+        }
+    }
+
+    @Override
     public void requestRoll() {
         LOGGER.trace("Requesting roll from player (" + playerId + ")");
-        messageHandler.send(new RequestRollMessage(), brokerId);
+        messageHandler.send(new RequestRoll(), brokerId);
     }
+    @Override
     public boolean requestUseBullets() {
         LOGGER.trace("Requesting bullets use from player ("+ playerId +")");
-        var response = messageHandler.send(new RequestUseBulletsMessage(), brokerId);
+        var response = messageHandler.send(new RequestUseBullets(), brokerId);
         return response.isUsingBullets();
     }
+    @Override
     @Nullable
     public ZombiesDirection requestPlayerMovement() {
         LOGGER.trace("Requesting movement from player ("+ playerId +")");
-        var response = messageHandler.send(new RequestPlayerMovementMessage(), brokerId);
+        var response = messageHandler.send(new RequestMovement(), brokerId);
         return response.getDirection();
     }
+    @Override
     @NotNull
     public Set<UUID> requestPlayerEventCardDiscards() {
         LOGGER.trace("Requesting discards from player ("+ playerId +")");
-        var response = messageHandler.send(new RequestDiscardsMessage(), brokerId);
+        var response = messageHandler.send(new RequestDiscards(), brokerId);
         return response.getCardIds();
     }
-
+    @Override
     public void sendGameUpdate(@NotNull ZombiesGameUpdateMessage update) {
         LOGGER.trace("Sending update to player ("+ playerId +"): " + update);
         messageHandler.send(update, brokerId);
     }
+
+//endregion
 }

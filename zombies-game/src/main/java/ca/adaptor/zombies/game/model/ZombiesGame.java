@@ -27,8 +27,8 @@ public class ZombiesGame {
 
     private static final int MIN_PLAYERS = 1;
     private static final int MAX_PLAYERS = 6;
-
-    public static final int MAX_NUM_EVENT_CARDS = 3;
+    // TODO: Update to 3 when cards are implemented!
+    public static final int MAX_NUM_EVENT_CARDS = 0;
 
     @Getter
     @Id
