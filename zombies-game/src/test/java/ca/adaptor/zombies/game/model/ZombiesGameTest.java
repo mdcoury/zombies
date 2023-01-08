@@ -4,7 +4,6 @@ import ca.adaptor.zombies.game.repositories.ZombiesGameRepository;
 import ca.adaptor.zombies.game.repositories.ZombiesMapRepository;
 import ca.adaptor.zombies.game.repositories.ZombiesMapTileRepository;
 import ca.adaptor.zombies.game.repositories.ZombiesTileRepository;
-import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 

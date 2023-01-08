@@ -37,7 +37,8 @@ public class ZombiesModelConstants {
     public static final String COLUMN_GAME_LIFES_XY                                             = "game_lifes_xy";
     public static final String COLUMN_GAME_ZOMBIES_XY                                           = "game_zombies_xy";
     public static final String COLUMN_GAME_GAME_DATA                                            = "game_game_data";
-    public static final String COLUMN_GAME_INITIALIZED                                          = "game_initialized";
+    public static final String COLUMN_GAME_POPULATED                                            = "game_populated";
+    public static final String COLUMN_GAME_RUNNING                                              = "game_running";
     public static final String COLUMN_GAME_TURN                                                 = "game_turn";
     public static final String COLUMN_GAME_MAP_ID                                               = "game_map_id";
 

@@ -1,6 +1,6 @@
 package ca.adaptor.zombies.game.model;
 
-import ca.adaptor.zombies.game.repositories.*;
+import ca.adaptor.zombies.game.repositories.ZombiesMapTileRepository;
 import jakarta.persistence.*;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -11,6 +11,7 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -50,26 +51,33 @@ public class ZombiesMap {
     })
     private ZombiesCoordinate helipadLocation;
 
-    @Transient
+    @Transient @Autowired
     private ZombiesMapTileRepository mapTileRepository;
 
-    public ZombiesMap(@Autowired ZombiesMapTileRepository mapTileRepository) {
-        this.mapTileRepository = mapTileRepository;
+    public void autowire(
+            @NotNull AutowireCapableBeanFactory autowireFactory
+    ) {
+        autowireFactory.autowireBean(this);
     }
 
-    public void add(@NotNull ZombiesMapTile mapTile) {
-        LOGGER.trace("[map=" + getId() + "] Placed " + mapTile);
-        mapTileIds.put(mapTile.getTopLeft(), mapTile.getId());
+    public boolean add(@NotNull ZombiesMapTile mapTile) {
+        assert mapTile.getId() != null;
 
-        var tile = mapTile.getTile();
-        if(tile.getName().equals(ZombiesTile.TOWN_SQUARE)) {
-            assert townSquareLocation == null;
-            townSquareLocation = new ZombiesCoordinate(mapTile.getTopLeft().getX() + 1, mapTile.getTopLeft().getY() + 1);
+        if(!mapTileIds.containsKey(mapTile.getTopLeft())) {
+            mapTileIds.put(mapTile.getTopLeft(), mapTile.getId());
+            LOGGER.trace("[map=" + getId() + "] Placed " + mapTile);
+
+            var tile = mapTile.getTile();
+            if (tile.getName().equals(ZombiesTile.TOWN_SQUARE)) {
+                assert townSquareLocation == null;
+                townSquareLocation = new ZombiesCoordinate(mapTile.getTopLeft().getX() + 1, mapTile.getTopLeft().getY() + 1);
+            } else if (tile.getName().equals(ZombiesTile.HELIPAD)) {
+                assert helipadLocation == null;
+                helipadLocation = new ZombiesCoordinate(mapTile.getTopLeft().getX() + 1, mapTile.getTopLeft().getY() + 1);
+            }
+            return true;
         }
-        if(tile.getName().equals(ZombiesTile.HELIPAD)) {
-            assert helipadLocation == null;
-            helipadLocation = new ZombiesCoordinate(mapTile.getTopLeft().getX() + 1, mapTile.getTopLeft().getY() + 1);
-        }
+        return false;
     }
 
     @Nullable

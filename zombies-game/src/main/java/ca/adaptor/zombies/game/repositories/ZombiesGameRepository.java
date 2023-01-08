@@ -6,10 +6,11 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface ZombiesGameRepository extends JpaRepository<ZombiesGame, UUID> {
     @Query("select g.id from #{#entityName} g")
-    List<UUID> findAllIds();
+    Optional<List<UUID>> findAllIds();
 }

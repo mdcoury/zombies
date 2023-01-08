@@ -5,7 +5,8 @@ import lombok.*;
 
 import java.util.UUID;
 
-import static ca.adaptor.zombies.game.model.ZombiesModelConstants.*;
+import static ca.adaptor.zombies.game.model.ZombiesModelConstants.COLUMN_PLAYER_ID;
+import static ca.adaptor.zombies.game.model.ZombiesModelConstants.TABLE_PLAYER;
 
 @Getter
 @Setter

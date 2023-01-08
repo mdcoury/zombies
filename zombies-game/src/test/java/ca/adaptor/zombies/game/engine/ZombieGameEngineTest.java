@@ -1,16 +1,9 @@
 package ca.adaptor.zombies.game.engine;
 
-import ca.adaptor.zombies.game.model.ZombiesDirection;
-import ca.adaptor.zombies.game.model.ZombiesGame;
-import ca.adaptor.zombies.game.model.ZombiesPlayer;
 import ca.adaptor.zombies.game.repositories.*;
-import ca.adaptor.zombies.game.util.ZombiesMapGenerator;
-import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import java.util.HashSet;
 import java.util.Random;
 
 @SpringBootTest

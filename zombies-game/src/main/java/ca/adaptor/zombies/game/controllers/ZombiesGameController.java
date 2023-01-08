@@ -1,12 +1,15 @@
 package ca.adaptor.zombies.game.controllers;
 
+import ca.adaptor.zombies.game.engine.ZombiesGameBroker;
+import ca.adaptor.zombies.game.engine.ZombiesGameEngine;
 import ca.adaptor.zombies.game.model.ZombiesGame;
-import ca.adaptor.zombies.game.repositories.ZombiesGameRepository;
-import ca.adaptor.zombies.game.repositories.ZombiesMapRepository;
-import ca.adaptor.zombies.game.repositories.ZombiesPlayerRepository;
+import ca.adaptor.zombies.game.model.ZombiesGameData;
+import ca.adaptor.zombies.game.repositories.*;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +17,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import static ca.adaptor.zombies.game.controllers.ZombiesControllerConstants.PATH_GAMES;
 
@@ -21,28 +26,43 @@ import static ca.adaptor.zombies.game.controllers.ZombiesControllerConstants.PAT
 @RequestMapping(PATH_GAMES)
 public class ZombiesGameController {
     private static final Logger LOGGER = LoggerFactory.getLogger(ZombiesGameController.class);
+
+    private final ExecutorService theExecutor = Executors.newWorkStealingPool();
+
     @Autowired
     private ZombiesGameRepository gameRepository;
+    @Autowired
+    private ZombiesGameDataRepository gameDataRepository;
     @Autowired
     private ZombiesPlayerRepository playerRepository;
     @Autowired
     private ZombiesMapRepository mapRepository;
     @Autowired
-    private ZombiesMapController mapController;
+    private ZombiesMapTileRepository mapTileRepository;
 
+    @Autowired
+    private ZombiesMapController mapController;
+    @Autowired
+    private ZombiesWsController wsController;
+
+    @Autowired
+    private AutowireCapableBeanFactory autowireFactory;
+
+    /** @return the {@link UUID} of the created {@link ZombiesGame} */
     @PostMapping
     public ResponseEntity<UUID> create() {
         var map = mapController.createMap();
-        var game = gameRepository.saveAndFlush(new ZombiesGame(map));
-        LOGGER.debug("Created game: " + game);
+        var game = gameRepository.saveAndFlush(new ZombiesGame(map.getId()));
+        LOGGER.debug("Created game: " + game.getId());
         return ResponseEntity.ok(game.getId());
     }
 
     @GetMapping
-    public List<UUID> getAllIds() {
-        var ret = gameRepository.findAllIds();
-        LOGGER.debug("Retrieving all map-IDs... found " + ret.size());
-        return ret;
+    public ResponseEntity<List<UUID>> getAllIds() {
+        var retOpt = gameRepository.findAllIds();
+        LOGGER.debug("Retrieving all game-IDs... found " + retOpt.map(List::size).orElse(0));
+        return retOpt.map(ResponseEntity::ok)
+                .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
     @GetMapping(path = "{gameId}", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -53,36 +73,60 @@ public class ZombiesGameController {
                 .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
+    /** @return the {@link UUID} of the player's {@link ZombiesGameData} */
     @PutMapping("{gameId}/join/{playerId}")
-    public ResponseEntity<Boolean> joinGame(@PathVariable UUID gameId, @PathVariable UUID playerId) {
+    public ResponseEntity<UUID> joinGame(@PathVariable UUID gameId, @PathVariable UUID playerId) {
         var gameOpt = gameRepository.findById(gameId);
         if(gameOpt.isPresent()) {
             var game = gameOpt.get();
+            game.autowire(autowireFactory);
+
             var playerOpt = playerRepository.findById(playerId);
             if(playerOpt.isPresent()) {
                 var player = playerOpt.get();
-                LOGGER.debug("Player (" + player + ") joining game (" + game + ")");
-                var joined = game.addPlayer(player);
-                gameRepository.saveAndFlush(game);
-                return ResponseEntity.ok(joined);
+                var playerDataId = game.addPlayer(player.getId());
+                if(playerDataId != null) {
+                    LOGGER.debug("Player (" + player.getId() + ") joined game (" + game.getId() + ")");
+                    gameRepository.saveAndFlush(game);
+                }
+                return ResponseEntity.ok(playerDataId);
             }
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
         return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
 
-    @PutMapping("{gameId}/init")
-    public ResponseEntity<Boolean> initializeGame(@PathVariable UUID gameId) {
+    @PutMapping("{gameId}/populate")
+    public ResponseEntity<Boolean> populateGame(@PathVariable UUID gameId) {
         var gameOpt = gameRepository.findById(gameId);
         if(gameOpt.isPresent()) {
             var game = gameOpt.get();
-            if(!game.isInitialized()) {
-                LOGGER.debug("Initializing game: " + game);
-                var initialized = game.initialize();
+            game.autowire(autowireFactory);
+            if(!game.isPopulated()) {
+                LOGGER.debug("Populating game: " + game.getId());
+                var populated = game.populate();
                 gameRepository.saveAndFlush(game);
-                return ResponseEntity.ok(initialized);
+                return ResponseEntity.ok(populated);
             }
             return ResponseEntity.ok(false);
+        }
+        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+    }
+
+    /** @return the {@link UUID} of the {@link ZombiesGameEngine} */
+    @PutMapping("{gameId}/start")
+    public ResponseEntity<UUID> startGame(@PathVariable UUID gameId) {
+        var gameOpt = gameRepository.findById(gameId);
+        if(gameOpt.isPresent()) {
+            var game = gameOpt.get();
+            game.autowire(autowireFactory);
+            var engine = ZombiesGameEngine.getInstance(game, ZombiesGameBroker::new);
+            // TODO: Chance for race-condition here
+            if(!game.isRunning()) {
+                engine.autowire(autowireFactory);
+                theExecutor.submit(engine::runGame);
+            }
+            return ResponseEntity.ok(engine.getGameEngineId());
         }
         return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }

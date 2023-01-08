@@ -1,28 +1,150 @@
 package ca.adaptor.zombies.game.engine;
 
+import ca.adaptor.zombies.game.messages.ZombiesGameUpdateMessage;
 import ca.adaptor.zombies.game.model.*;
+import ca.adaptor.zombies.game.repositories.ZombiesGameDataRepository;
+import ca.adaptor.zombies.game.repositories.ZombiesGameRepository;
 import ca.adaptor.zombies.game.repositories.ZombiesMapRepository;
 import ca.adaptor.zombies.game.repositories.ZombiesMapTileRepository;
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
 
 import java.util.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
 
-import static ca.adaptor.zombies.game.engine.ZombiesGameUpdateMessage.Phase.*;
+import static ca.adaptor.zombies.game.messages.ZombiesGameUpdateMessage.Phase.*;
 import static ca.adaptor.zombies.game.model.ZombiesGame.MAX_NUM_EVENT_CARDS;
 
 public class ZombiesGameEngine {
+//region Static methods and fields
+    private static class Registry {
+        private final ReadWriteLock registryLock = new ReentrantReadWriteLock();
+
+        /** Maps a engine/game-ID to a game-engine */
+        private final Map<UUID, ZombiesGameEngine> theEngineRegistry = new HashMap<>();
+        /**
+         * A {@link ZombiesGame} id is in this {@link Set} iff there is a game
+         * -engine for it currently active; ie, in {@link #theEngineRegistry}.
+         */
+        private final Map<UUID, UUID> theGameRegistry = new HashMap<>();
+
+        boolean containsGame(@NotNull UUID gameId) {
+            registryLock.readLock().lock();
+            try {
+                return theGameRegistry.containsKey(gameId);
+            }
+            finally {
+                registryLock.readLock().unlock();
+            }
+        }
+        boolean containsEngine(@NotNull UUID engineId) {
+            registryLock.readLock().lock();
+            try {
+                return theEngineRegistry.containsKey(engineId);
+            }
+            finally {
+                registryLock.readLock().unlock();
+            }
+        }
+        @Nullable
+        ZombiesGameEngine getEngineById(@NotNull UUID engineId) {
+            registryLock.readLock().lock();
+            try {
+                return theEngineRegistry.get(engineId);
+            }
+            finally {
+                registryLock.readLock().unlock();
+            }
+        }
+        @Nullable
+        ZombiesGameEngine getEngineByGameId(@NotNull UUID gameId) {
+            registryLock.readLock().lock();
+            try {
+                return theEngineRegistry.get(theGameRegistry.get(gameId));
+            }
+            finally {
+                registryLock.readLock().unlock();
+            }
+        }
+        void addEngine(@NotNull ZombiesGameEngine engine) {
+            registryLock.writeLock().lock();
+            assert !theRegistry.containsEngine(engine.getGameEngineId());
+            try {
+                LOGGER.trace("Adding game-engine to registry: " + engine.getGameEngineId());
+                theEngineRegistry.put(engine.getGameEngineId(), engine);
+                theGameRegistry.put(engine.getTheGame().getId(), engine.getGameEngineId());
+            }
+            finally {
+                registryLock.writeLock().unlock();
+            }
+        }
+        void removeEngine(@NotNull ZombiesGameEngine engine) {
+            removeEngineById(engine.getGameEngineId());
+        }
+        void removeEngineById(@NotNull UUID engineId) {
+            registryLock.writeLock().lock();
+            try {
+                LOGGER.trace("Removing game-engine from registry: " + engineId);
+                var engine = theEngineRegistry.remove(engineId);
+                if(engine != null) {
+                    theGameRegistry.remove(engine.getTheGame().getId());
+                }
+            }
+            finally {
+                registryLock.writeLock().unlock();
+            }
+        }
+    }
+
     private static final Logger LOGGER = LoggerFactory.getLogger(ZombiesGameEngine.class);
     public static final int MIN_WINNING_ROLL = 4;
 
-    //    @Value("zombies.rng.seed")
-    private long rngSeed = System.currentTimeMillis();
+    private static final Registry theRegistry = new Registry();
 
-    // TODO: Pass a seed into here, perhaps from application.properties
+    private static final Lock mutex = new ReentrantLock();
+
+    @NotNull
+    public static ZombiesGameEngine getInstance(@NotNull UUID gameId) {
+        return Objects.requireNonNull(
+                theRegistry.getEngineByGameId(gameId)
+        );
+    }
+
+    @NotNull
+    public static <B extends IZombiesGameBroker> ZombiesGameEngine getInstance(
+            @NotNull ZombiesGame game,
+            @NotNull Supplier<B> supplier
+    ) {
+        assert game.getId() != null;
+
+        mutex.lock();
+        try {
+            if (!theRegistry.containsGame(game.getId())) {
+                theRegistry.addEngine(new ZombiesGameEngine(game, supplier));
+            }
+        }
+        finally {
+            mutex.unlock();
+        }
+        return getInstance(game.getId());
+    }
+
+    public static void releaseInstance(@NotNull UUID engineId) {
+        theRegistry.removeEngineById(engineId);
+    }
+//endregion
+
+    private final long rngSeed = Long.parseLong(System.getProperty("zombies.rng.seed", String.valueOf(System.currentTimeMillis())));
     private final Random rng = new Random(rngSeed);
     @Getter
     private final UUID gameEngineId = UUID.randomUUID();
@@ -30,54 +152,75 @@ public class ZombiesGameEngine {
     private final ZombiesGame theGame;
     @Getter
     private long serialNumberCtr = 0;
-    @Getter
-    private boolean running = false;
 
-    private final Map<UUID, ZombiesGameBrokerInterface> theBrokersById = new HashMap<>();
-    private final ZombiesMapRepository mapRepository;
-    private final ZombiesMapTileRepository mapTileRepository;
+    private final Map<UUID, IZombiesGameBroker> theBrokersByPlayerId = new HashMap<>();
+//region Autowired fields
+    @Autowired
+    private ZombiesMapRepository mapRepository;
+    @Autowired
+    private ZombiesMapTileRepository mapTileRepository;
+    @Autowired
+    private ZombiesGameRepository gameRepository;
+    @Autowired
+    private ZombiesGameDataRepository gameDataRepository;
+//endregion
     private ZombiesMap theMap;
 
-    public <B extends ZombiesGameBrokerInterface> ZombiesGameEngine(
+    private <B extends IZombiesGameBroker> ZombiesGameEngine(
             @NotNull ZombiesGame game,
-            @NotNull Supplier<B> supplier,
-            @NotNull ZombiesMapRepository mapRepository,
-            @NotNull ZombiesMapTileRepository mapTileRepository
+            @NotNull Supplier<B> supplier
     ) {
         theGame = game;
-        this.mapRepository = mapRepository;
-        this.mapTileRepository = mapTileRepository;
         for(var playerId : theGame.getPlayerIds()) {
-            theBrokersById.put(playerId, supplier.get());
+            var broker = supplier.get();
+            theBrokersByPlayerId.put(playerId, broker);
+            LOGGER.trace("Created broker (id="+broker.getBrokerId()+") for player ("+playerId+")");
         }
         LOGGER.debug("Created engine (id="+gameEngineId+") for game (id="+theGame.getId()+")");
     }
 
+    @Nullable
+    public IZombiesGameBroker getBroker(@NotNull UUID playerId) {
+        return theBrokersByPlayerId.get(playerId);
+    }
+
+    public void autowire(@NotNull AutowireCapableBeanFactory autowireFactory) {
+        autowireFactory.autowireBean(this);
+    }
+
     public void runGame() {
-        if(running) {
-            throw new IllegalStateException("The game's (id="+theGame.getId()+") engine (id="+gameEngineId+") is already running!)");
+        assert mapRepository != null;
+        assert mapTileRepository != null;
+
+        if(!theGame.isPopulated()) {
+            throw new IllegalStateException("The game (id="+theGame.getId()+") is not initialized!");
         }
-        if(!theGame.isInitialized()) {
-            boolean initialized = theGame.initialize();
-            if(!initialized) {
-                throw new IllegalStateException("The game (id="+theGame.getId()+") failed to initialize!");
-            }
+        if(theGame.isRunning()) {
+            throw new IllegalStateException("The game's (id="+theGame.getId()+") engine (id="+gameEngineId+") is already running!)");
         }
 
         theMap = mapRepository.findById(theGame.getMapId()).orElseThrow();
+        //----- Wait until all of the players have connected to the web-socket
+        try {
+            waitForPlayersToConnect();
+        }
+        catch (InterruptedException e) {
+            LOGGER.error("An exception occurred while waiting for players to connect", e);
+            return;
+        }
 
-        running = true;
-        while(running) {
+        theGame.setRunning(true);
+        while(theGame.isRunning()) {
             //----- During a turn, players must perform the following steps.
             theGame.incrementTurn();
             for(var playerId : theGame.getPlayerIds()) {
                 LOGGER.debug("Running... (Game=" + theGame.getId() + ", Engine=" + gameEngineId + ", Player=" + playerId + ",Turn=" + theGame.getTurn() + ")");
-
                 var playerData = theGame.getPlayerData(playerId);
+
                 //  1. Draw a tile from the map deck and place it on the table.
                 /* NOOP */
                 //  2. Combat any zombies on your current space. (Please see Combat Rules section.)
-                if(theGame.isZombieAtLocation(theGame.getPlayerData(playerId).getLocation())) {
+                if(theGame.isZombieAtLocation(playerData.getLocation())) {
                     resolveCombat(playerId);
                     if(playerData.isPlayerDead()) {
                         //----- reset the player and then continue
@@ -87,14 +230,14 @@ public class ZombiesGameEngine {
                     }
                 }
                 //  3. Draw back up to three event cards, if you have less than three.
-                var eventCardIds = theGame.getPlayerData(playerId).getEventCardIds();
+                var eventCardIds = playerData.getEventCardIds();
                 while(eventCardIds.size() < MAX_NUM_EVENT_CARDS) {
                     LOGGER.debug("Drawing card... (Game=" + theGame.getId() + ", Engine=" + gameEngineId + ", Player=" + playerId + ",Turn=" + theGame.getTurn() + ")");
                     eventCardIds.add(drawCard());
                 }
                 var update = createUpdateMessage(DRAW_CARDS);
-                update.setPlayerData(theGame.getPlayerData(playerId));
-                theBrokersById.get(playerId).sendGameUpdate(update);
+                update.setPlayerData(playerData);
+                theBrokersByPlayerId.get(playerId).sendGameUpdate(update);
                 //  4. Make a movement roll. (Please see Movement Rules section.)
                 //  5. Move up to the number of spaces indicated by the movement roll. You must stop
                 //     and combat on any space occupied by a zombie. You may continue your movement
@@ -112,8 +255,21 @@ public class ZombiesGameEngine {
                 //  7. At the end of the turn, you may discard one event card from your hand.
                 //     Play then proceeds clockwise around the table
                 resolveEventCardDiscards(playerId);
+
+                gameDataRepository.save(playerData);
+                gameRepository.save(theGame);
             }
         }
+    }
+
+    private void waitForPlayersToConnect() throws InterruptedException {
+        var latch = new CountDownLatch(theGame.getNumberOfPlayers());
+        for(var broker : theBrokersByPlayerId.values()) {
+            broker.testForHandler(latch::countDown);
+        }
+        // TODO: Add timeout
+        latch.await();
+        LOGGER.trace("All players have connected");
     }
 
     private void resetPlayer(@NotNull UUID playerId) {
@@ -126,7 +282,7 @@ public class ZombiesGameEngine {
         return ret;
     }
 
-    private int requastRoll(@NotNull ZombiesGameBrokerInterface broker, ZombiesGameUpdateMessage.Phase phase) {
+    private int requastRoll(@NotNull IZombiesGameBroker broker, ZombiesGameUpdateMessage.Phase phase) {
         broker.requestRoll();
         int roll = rollD6();
         var rollUpdate = createUpdateMessage(phase);
@@ -160,7 +316,7 @@ public class ZombiesGameEngine {
         assert theGame.isZombieAtLocation(location);
         LOGGER.trace("Resolving combat... (Game=" + theGame.getId() + ", Engine=" + gameEngineId + ", Player=" + playerId + ",Turn=" + theGame.getTurn() + ")");
 
-        var broker = theBrokersById.get(playerId);
+        var broker = theBrokersByPlayerId.get(playerId);
         var stillResolving = true;
         while(stillResolving) {
             //----- Ask the player to "roll" the dice
@@ -208,12 +364,12 @@ public class ZombiesGameEngine {
 
     @NotNull
     private ZombiesGameUpdateMessage createUpdateMessage(ZombiesGameUpdateMessage.Phase phase) {
-        return new ZombiesGameUpdateMessage(theGame.getId(), gameEngineId, theGame.getTurn(), serialNumberCtr++, phase);
+        return new ZombiesGameUpdateMessage(theGame.getId(), serialNumberCtr++, theGame.getTurn(), phase);
     }
 
     private void broadcastUpdateMessage(@NotNull ZombiesGameUpdateMessage update) {
         LOGGER.trace("Broadcasting game-update: " + update);
-        for(var broker : theBrokersById.values()) {
+        for(var broker : theBrokersByPlayerId.values()) {
             broker.sendGameUpdate(update);
         }
     }
@@ -227,11 +383,11 @@ public class ZombiesGameEngine {
     private ZombiesCoordinate getDestination(@NotNull ZombiesCoordinate location, @NotNull ZombiesDirection direction) {
         ZombiesCoordinate ret;
         switch(direction) {
-            case NORTH -> ret = new ZombiesCoordinate(location.getX(), location.getY() - 1);
-            case EAST -> ret = new ZombiesCoordinate(location.getX() + 1, location.getY());
-            case SOUTH -> ret = new ZombiesCoordinate(location.getX(), location.getY() + 1);
-            case WEST -> ret = new ZombiesCoordinate(location.getX() - 1, location.getY());
-            default -> throw new IllegalArgumentException();
+            case NORTH  -> ret = new ZombiesCoordinate(location.getX(),     location.getY() - 1 );
+            case EAST   -> ret = new ZombiesCoordinate(location.getX() + 1, location.getY()     );
+            case SOUTH  -> ret = new ZombiesCoordinate(location.getX(),     location.getY() + 1 );
+            case WEST   -> ret = new ZombiesCoordinate(location.getX() - 1, location.getY()     );
+            default     -> throw new IllegalArgumentException();
         }
         return ret;
     }
@@ -259,7 +415,7 @@ public class ZombiesGameEngine {
         LOGGER.trace("Resolving movement... (Game=" + theGame.getId() + ", Engine=" + gameEngineId + ", Player=" + playerId + ",Turn=" + theGame.getTurn() + ")");
         var location = theGame.getPlayerData(playerId).getLocation();
 
-        var broker = theBrokersById.get(playerId);
+        var broker = theBrokersByPlayerId.get(playerId);
         int roll = requastRoll(broker, MOVEMENT);
 
         for(int i = 0; i < roll; i++) {
@@ -281,22 +437,23 @@ public class ZombiesGameEngine {
             assert mapTileId != null;
             var mapTile = mapTileRepository.findById(mapTileId).orElseThrow();
             if(mapTile.getSquareType(destination) != ZombiesTile.SquareType.IMPASSABLE) {
-                LOGGER.trace("Moving player ("+playerId+"): ("+data.getLocation()+") -> ("+destination+")");
+                LOGGER.trace("Moving player (" + playerId + "): (" + data.getLocation() + ") -> (" + destination + ")");
                 data.setLocation(destination);
                 //----- See if there's a zombie where the player has moved to
                 if(theGame.isZombieAtLocation(destination)) {
                     resolveCombat(playerId);
                     if(data.isPlayerDead()) {
+                        LOGGER.debug("Player (" + playerId + ") died!");
                         break;
                     }
                 }
                 if(theGame.isBulletAtLocation(destination)) {
-                    LOGGER.trace("Player ("+playerId+") found a bullet!");
+                    LOGGER.trace("Player (" + playerId + ") found a bullet!");
                     theGame.getBulletLocations().remove(destination);
                     data.incrementBullets();
                 }
                 if(theGame.isLifeAtLocation(destination)) {
-                    LOGGER.trace("Player ("+playerId+") found a life!");
+                    LOGGER.trace("Player (" + playerId + ") found a life!");
                     theGame.getLifeLocations().remove(destination);
                     data.incrementLife();
                 }
@@ -363,7 +520,7 @@ public class ZombiesGameEngine {
 
     private void resolveEventCardDiscards(@NotNull UUID playerId) {
         LOGGER.trace("Resolving event-card discards... (Game=" + theGame.getId() + ", Engine=" + gameEngineId + ", Player=" + playerId + ",Turn=" + theGame.getTurn() + ")");
-        var cardIdsToDiscard = theBrokersById.get(playerId).requestPlayerEventCardDiscards();
+        var cardIdsToDiscard = theBrokersByPlayerId.get(playerId).requestPlayerEventCardDiscards();
         var playerCardIds = theGame.getPlayerData(playerId).getEventCardIds();
         for(var cardId : cardIdsToDiscard) {
             LOGGER.trace("Player (" + playerId + ") discarding card: id= " + cardId);

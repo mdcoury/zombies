@@ -13,7 +13,8 @@ import java.util.UUID;
 
 import static ca.adaptor.zombies.game.model.ZombiesModelConstants.*;
 import static ca.adaptor.zombies.game.model.ZombiesTile.TILE_SIZE;
-import static org.hibernate.annotations.CascadeType.*;
+import static org.hibernate.annotations.CascadeType.MERGE;
+import static org.hibernate.annotations.CascadeType.SAVE_UPDATE;
 
 @NoArgsConstructor
 @EqualsAndHashCode
@@ -49,7 +50,7 @@ public class ZombiesMapTile {
     @Transient
     private boolean cached = false;
 
-    public ZombiesMapTile(@NotNull ZombiesTile tile, @NotNull ZombiesCoordinate topLeft, TileRotation rotation) {
+    public ZombiesMapTile(@NotNull ZombiesTile tile, @NotNull ZombiesCoordinate topLeft, @NotNull TileRotation rotation) {
         this.tile = tile;
         this.topLeft = topLeft;
         this.rotation = rotation;
