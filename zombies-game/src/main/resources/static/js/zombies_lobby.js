@@ -133,6 +133,6 @@ function sendHello(socket) {
     gameId = $(document).find("#newGameId").text();
     playerId = $(document).find("#newPlayerId").text();
     socket.send(
-        '"HelloMessage": { "playerId": "'+playerId+'", "gameId": "'+gameId+'", "type": "HELLO" }'
+        '{"@type": "HelloMessage", "playerId": "'+playerId+'", "gameId": "'+gameId+'", "type": "HELLO"}'
     );
 }

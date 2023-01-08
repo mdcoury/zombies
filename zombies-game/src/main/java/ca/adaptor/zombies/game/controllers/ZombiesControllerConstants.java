@@ -1,7 +1,5 @@
 package ca.adaptor.zombies.game.controllers;
 
-import org.springframework.core.annotation.OrderUtils;
-
 public class ZombiesControllerConstants {
     public static final String PATH_ROOT = "zombies";
     public static final String PATH_MAPS = PATH_ROOT + "/maps";

@@ -2,7 +2,8 @@ package ca.adaptor.zombies.game.controllers;
 
 import ca.adaptor.zombies.game.engine.ZombiesGameBroker;
 import ca.adaptor.zombies.game.engine.ZombiesGameEngine;
-import ca.adaptor.zombies.game.model.*;
+import ca.adaptor.zombies.game.model.ZombiesGame;
+import ca.adaptor.zombies.game.model.ZombiesGameData;
 import ca.adaptor.zombies.game.repositories.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

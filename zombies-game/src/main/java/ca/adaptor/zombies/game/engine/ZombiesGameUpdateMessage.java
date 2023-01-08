@@ -1,10 +1,12 @@
 package ca.adaptor.zombies.game.engine;
 
-import ca.adaptor.zombies.game.model.ZombiesGameData;
 import ca.adaptor.zombies.game.model.ZombiesCoordinate;
+import ca.adaptor.zombies.game.model.ZombiesGameData;
 import lombok.*;
 
-import java.util.*;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 
 
 @Getter @Setter

@@ -4,7 +4,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.UUID;
 
-public interface WsMessage {
+public interface IZombiesWsMessage {
     enum Type {
         HELLO, GAME
     }

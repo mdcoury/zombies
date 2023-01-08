@@ -1,6 +1,6 @@
 package ca.adaptor.zombies.game.model;
 
-import ca.adaptor.zombies.game.repositories.*;
+import ca.adaptor.zombies.game.repositories.ZombiesMapTileRepository;
 import jakarta.persistence.*;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;

@@ -119,7 +119,7 @@ public class ZombiesGameEngine {
     }
 
     @NotNull
-    public static <B extends ZombiesGameBrokerInterface> ZombiesGameEngine getInstance(
+    public static <B extends IZombiesGameBroker> ZombiesGameEngine getInstance(
             @NotNull ZombiesGame game,
             @NotNull Supplier<B> supplier
     ) {
@@ -150,7 +150,7 @@ public class ZombiesGameEngine {
     @Getter
     private long serialNumberCtr = 0;
 
-    private final Map<UUID, ZombiesGameBrokerInterface> theBrokersByPlayerId = new HashMap<>();
+    private final Map<UUID, IZombiesGameBroker> theBrokersByPlayerId = new HashMap<>();
 
     @Autowired
     private ZombiesMapRepository mapRepository;
@@ -163,7 +163,7 @@ public class ZombiesGameEngine {
 
     private ZombiesMap theMap;
 
-    private <B extends ZombiesGameBrokerInterface> ZombiesGameEngine(
+    private <B extends IZombiesGameBroker> ZombiesGameEngine(
             @NotNull ZombiesGame game,
             @NotNull Supplier<B> supplier
     ) {
@@ -177,7 +177,7 @@ public class ZombiesGameEngine {
     }
 
     @Nullable
-    public ZombiesGameBrokerInterface getBroker(@NotNull UUID playerId) {
+    public IZombiesGameBroker getBroker(@NotNull UUID playerId) {
         return theBrokersByPlayerId.get(playerId);
     }
 
@@ -275,7 +275,7 @@ public class ZombiesGameEngine {
         return ret;
     }
 
-    private int requastRoll(@NotNull ZombiesGameBrokerInterface broker, ZombiesGameUpdateMessage.Phase phase) {
+    private int requastRoll(@NotNull IZombiesGameBroker broker, ZombiesGameUpdateMessage.Phase phase) {
         broker.requestRoll();
         int roll = rollD6();
         var rollUpdate = createUpdateMessage(phase);
