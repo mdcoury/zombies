@@ -18,28 +18,29 @@
     </div>
     <div id="useBulletsDiv" style="display:none" data-message="">
         <label>Use Bullets?</label>
-        <button id="yesButton" onclick="useBullets(1);">Yes</button>
-        <button id="noButton" onclick="useBullets(0);">No</button>
+        <button id="yesButton" onclick="useBullets('true');">Yes</button>
+        <button id="noButton" onclick="useBullets('false');">No</button>
     </div>
     <div id="moveDiv" style="display:none" data-message="">
         <label>Move:</label>
         <table>
             <tr>
                 <td> </td>
-                <td><button id="northButton" onclick="move('N');">N</button></td>
+                <td><button id="northButton" onclick="move('NORTH');">N</button></td>
                 <td> </td>
             </tr>
             <tr>
-                <td><button id="westButton" onclick="move('W');">W</button></td>
-                <td></td>
-                <td><button id="eastButton" onclick="move('E');">E</button></td>
+                <td><button id="westButton" onclick="move('WEST');">W</button></td>
+                <td><button id="stayButton" onclick="move(null);">•</button></td>
+                <td><button id="eastButton" onclick="move('EAST');">E</button></td>
             </tr>
             <tr>
                 <td></td>
-                <td><button id="southButton" onclick="move('S');">S</button></td>
+                <td><button id="southButton" onclick="move('SOUTH');">S</button></td>
                 <td></td>
             </tr>
         </table>
     </div>
+    <p id="updateInf"></p>
 </body>
 </html>

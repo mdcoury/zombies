@@ -97,6 +97,7 @@ public class ZombiesWsController implements WebSocketConfigurer {
             assert messageCallbacks.containsKey(reply.getMessageId());
 
             if(theBrokersBySessionId.containsKey(sessionId)) {
+                LOGGER.trace("Processing reply: " + reply);
                 messageCallbacks.get(reply.getMessageId()).accept(reply);
             }
             else {

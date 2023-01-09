@@ -11,8 +11,6 @@ import java.util.UUID;
 
 import static ca.adaptor.zombies.game.messages.IZombiesWsMessage.*;
 
-@ToString
-@EqualsAndHashCode
 @JsonIgnoreProperties(ignoreUnknown = true, allowGetters = true, allowSetters = true)
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME)
 @JsonSubTypes({
@@ -32,6 +30,8 @@ public abstract class AbstractZombiesWsMessage implements IZombiesWsMessage {
         private Type type = Type.REQUEST;
     }
 
+    @ToString
+    @EqualsAndHashCode
     @NoArgsConstructor
     public static class Hello extends AbstractZombiesWsMessage {
         @Getter @Setter
@@ -42,6 +42,8 @@ public abstract class AbstractZombiesWsMessage implements IZombiesWsMessage {
         private Type type = Type.HELLO;
     }
 
+    @ToString
+    @EqualsAndHashCode
     @NoArgsConstructor
     public static class Goodbye extends AbstractZombiesWsMessage {
         @Getter @Setter
@@ -51,20 +53,28 @@ public abstract class AbstractZombiesWsMessage implements IZombiesWsMessage {
         @Getter @Setter
         private Type type = Type.BYE;
     }
+    @ToString
+    @EqualsAndHashCode
     @NoArgsConstructor
     public static class RequestRoll extends AbstractRequestMessage {
 
     }
+    @ToString
+    @EqualsAndHashCode
     @NoArgsConstructor
     public static class RequestUseBullets extends AbstractRequestMessage {
         @Getter @Setter
         private boolean usingBullets;
     }
+    @ToString
+    @EqualsAndHashCode
     @NoArgsConstructor
     public static class RequestMovement extends AbstractRequestMessage {
         @Getter @Setter
         private ZombiesDirection direction;
     }
+    @ToString
+    @EqualsAndHashCode
     @NoArgsConstructor
     public static class RequestDiscards extends AbstractRequestMessage {
         @Getter @Setter

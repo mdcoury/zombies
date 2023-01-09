@@ -79,7 +79,19 @@ function processGameRequest(request) {
         case 'RequestRoll':
             requestRoll(request);
             break;
+        case 'RequestUseBullets':
+            requestUseBullets(request);
+            break;
+        case 'RequestMovement':
+            requestMovement(request);
+            break;
+        case 'RequestDiscards':
+            requestDiscards(request);
+            break;
     }
+}
+function processGameUpdate(update) {
+    $(document).find("#updateInf").text(JSON.stringify(update)).show();
 }
 
 function requestRoll(request) {
@@ -87,16 +99,37 @@ function requestRoll(request) {
     div[0].dataset.message = JSON.stringify(request);
     div[0].style.display = "block";
 }
+function requestMovement(request) {
+    var div = $(document).find("#moveDiv");
+    div[0].dataset.message = JSON.stringify(request);
+    div[0].style.display = "block";
+}
+function requestUseBullets(request) {
+    var div = $(document).find("#useBulletsDiv");
+    div[0].dataset.message = JSON.stringify(request);
+    div[0].style.display = "block";
+}
 
 function rollDice() {
     var div = $(document).find("#rollDiceDiv");
     div[0].style.display = "none";
-    var request = div[0].dataset.message;
-    socket.send(request);
+    socket.send(div[0].dataset.message);
 }
 function useBullets(use) {
+    var div = $(document).find("#useBulletsDiv");
+    div[0].style.display = "block";
+    var json = JSON.parse(div[0].dataset.message);
+    json.usingBullets = use;
+    socket.send(JSON.stringify(json));
 }
 function move(direction) {
+    var div = $(document).find("#moveDiv");
+    div[0].style.display = "block";
+    var json = JSON.parse(div[0].dataset.message);
+    if(direction != null) {
+        json.direction = direction;
+    }
+    socket.send(JSON.stringify(json));
 }
 
 //    gameCanvas = document.getElementById(canvasId);
