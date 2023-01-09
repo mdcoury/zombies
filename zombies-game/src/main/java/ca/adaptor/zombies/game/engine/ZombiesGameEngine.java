@@ -269,7 +269,7 @@ public class ZombiesGameEngine {
         }
         // TODO: Add timeout
         latch.await();
-        LOGGER.trace("All players have connected");
+        LOGGER.trace("All players have connected to game (engine-id="+gameEngineId+")");
     }
 
     private void resetPlayer(@NotNull UUID playerId) {

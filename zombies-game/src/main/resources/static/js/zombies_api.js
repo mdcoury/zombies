@@ -38,6 +38,21 @@ function api_maps_post(successFn, errorFn, async = true) {
     });
 }
 
+function api_maps_get(mapId, successFn, errorFn, async = true) {
+    var url = baseUrl + "maps/" + mapId;
+
+    jQuery.ajax({
+        url: url,
+        context: document.body,
+        type: 'GET',
+        async: async,
+        headers: {
+        },
+        success: successFn,
+        error: errorFn
+    });
+}
+
 function api_games_post(successFn, errorFn, async = true) {
     var url = baseUrl + "games";
     var request = new Object();
@@ -49,6 +64,21 @@ function api_games_post(successFn, errorFn, async = true) {
         datatype: 'json',
         context: document.body,
         type: 'POST',
+        async: async,
+        headers: {
+        },
+        success: successFn,
+        error: errorFn
+    });
+}
+
+function api_games_get(gameId, successFn, errorFn, async = true) {
+    var url = baseUrl + "games/" + gameId;
+
+    jQuery.ajax({
+        url: url,
+        context: document.body,
+        type: 'GET',
         async: async,
         headers: {
         },

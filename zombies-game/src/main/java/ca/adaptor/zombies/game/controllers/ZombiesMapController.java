@@ -15,7 +15,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Random;
 import java.util.UUID;
 
@@ -50,14 +49,6 @@ public class ZombiesMapController {
     @PostMapping
     public ResponseEntity<UUID> create() {
         return ResponseEntity.ok(createMap().getId());
-    }
-
-    @GetMapping
-    public ResponseEntity<List<UUID>> getAllIds() {
-        var retOpt = mapRepository.findAllIds();
-        LOGGER.debug("Retrieving all map-IDs... found " + retOpt.map(List::size).orElse(0));
-        return retOpt.map(ResponseEntity::ok)
-                .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
     @GetMapping(path = "{mapId}", produces = MediaType.APPLICATION_JSON_VALUE)

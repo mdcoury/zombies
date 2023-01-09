@@ -8,7 +8,6 @@ import ca.adaptor.zombies.game.messages.ZombiesGameUpdateMessage;
 import ca.adaptor.zombies.game.model.ZombiesDirection;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -25,12 +24,10 @@ public class ZombiesGameBroker implements IZombiesGameBroker {
 
     @Getter
     private final UUID brokerId = UUID.randomUUID();
-    @Getter @Setter
-    private UUID playerId;
     @Getter
     private IMessageHandler messageHandler = null;
     // TODO: This is a bit clunky...
-    private Lock callbackLock = new ReentrantLock();
+    private final Lock callbackLock = new ReentrantLock();
     private Runnable callbackFn = null;
 
 //region ZombiesGameBrokerInterface
@@ -69,32 +66,32 @@ public class ZombiesGameBroker implements IZombiesGameBroker {
 
     @Override
     public void requestRoll() {
-        LOGGER.trace("Requesting roll from player (" + playerId + ")");
+        LOGGER.trace("Requesting roll from broker (" + brokerId+ ")");
         messageHandler.send(new RequestRoll(), brokerId);
     }
     @Override
     public boolean requestUseBullets() {
-        LOGGER.trace("Requesting bullets use from player ("+ playerId +")");
+        LOGGER.trace("Requesting bullets use from broker (" + brokerId+")");
         var response = messageHandler.send(new RequestUseBullets(), brokerId);
         return response.isUsingBullets();
     }
     @Override
     @Nullable
     public ZombiesDirection requestPlayerMovement() {
-        LOGGER.trace("Requesting movement from player ("+ playerId +")");
+        LOGGER.trace("Requesting movement from broker (" + brokerId+")");
         var response = messageHandler.send(new RequestMovement(), brokerId);
         return response.getDirection();
     }
     @Override
     @NotNull
     public Set<UUID> requestPlayerEventCardDiscards() {
-        LOGGER.trace("Requesting discards from player ("+ playerId +")");
+        LOGGER.trace("Requesting discards from broker (" + brokerId+")");
         var response = messageHandler.send(new RequestDiscards(), brokerId);
         return response.getCardIds();
     }
     @Override
     public void sendGameUpdate(@NotNull ZombiesGameUpdateMessage update) {
-        LOGGER.trace("Sending update to player ("+ playerId +"): " + update);
+        LOGGER.trace("Sending update to broker (" + brokerId+"): " + update);
         messageHandler.send(update, brokerId);
     }
 

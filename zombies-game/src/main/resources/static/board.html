@@ -5,9 +5,41 @@
     <script src="https://code.jquery.com/jquery-3.6.3.min.js"></script>
     <script src="js/zombies_api.js"></script>
     <script src="js/zombies_game.js"></script>
-    <title>Zombies!!!</title>
+    <title>Zombies!!! (Game)</title>
 </head>
 <body onload="connect()">
+    <p id="uuidInf"></p>
+    <p id="socketInf"></p>
+    <br/>
     <canvas id="gameCanvas"></canvas>
+    <br/>
+    <div id="rollDiceDiv" style="display:none" data-message="">
+        <button id="rollDiceButton" onclick="rollDice();">Roll</button>
+    </div>
+    <div id="useBulletsDiv" style="display:none" data-message="">
+        <label>Use Bullets?</label>
+        <button id="yesButton" onclick="useBullets(1);">Yes</button>
+        <button id="noButton" onclick="useBullets(0);">No</button>
+    </div>
+    <div id="moveDiv" style="display:none" data-message="">
+        <label>Move:</label>
+        <table>
+            <tr>
+                <td> </td>
+                <td><button id="northButton" onclick="move('N');">N</button></td>
+                <td> </td>
+            </tr>
+            <tr>
+                <td><button id="westButton" onclick="move('W');">W</button></td>
+                <td></td>
+                <td><button id="eastButton" onclick="move('E');">E</button></td>
+            </tr>
+            <tr>
+                <td></td>
+                <td><button id="southButton" onclick="move('S');">S</button></td>
+                <td></td>
+            </tr>
+        </table>
+    </div>
 </body>
 </html>
