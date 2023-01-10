@@ -154,6 +154,7 @@ public class ZombiesGame {
         assert populated;
 
         var tile = mapTile.getTile();
+        // TODO: These need to be rotated!!
         var exits = tile.getExits();
         for(var exit : exits) {
             switch(exit) {
@@ -181,6 +182,7 @@ public class ZombiesGame {
         assert populated;
 
         var tile = mapTile.getTile();
+        // TODO: These need to be rotated!!
         var buildingSquares = tile.getBuildingSquares();
         Collections.shuffle(buildingSquares);
 

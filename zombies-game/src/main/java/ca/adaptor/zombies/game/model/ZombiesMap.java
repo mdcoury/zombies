@@ -51,6 +51,12 @@ public class ZombiesMap {
             @AttributeOverride(name = COLUMN_Y, column = @Column(name = COLUMN_HELIPAD_Y)),
     })
     private ZombiesCoordinate helipadLocation;
+    @Getter
+    @Column
+    private int minx = Integer.MAX_VALUE;
+    @Getter
+    @Column
+    private int miny = Integer.MAX_VALUE;
 
     @Transient @Autowired
     private ZombiesMapTileRepository mapTileRepository;
@@ -62,16 +68,19 @@ public class ZombiesMap {
     public boolean add(@NotNull ZombiesMapTile mapTile) {
         assert mapTile.getId() != null;
 
-        if(!mapTileIds.containsKey(mapTile.getTopLeft())) {
-            mapTileIds.put(mapTile.getTopLeft(), mapTile.getId());
+        var topLeft = mapTile.getTopLeft();
+        if(!mapTileIds.containsKey(topLeft)) {
+            mapTileIds.put(topLeft, mapTile.getId());
+            minx = Math.min(minx, topLeft.getX());
+            miny = Math.min(miny, topLeft.getY());
 
             var tile = mapTile.getTile();
             if (tile.getName().equals(ZombiesTile.TOWN_SQUARE)) {
                 assert townSquareLocation == null;
-                townSquareLocation = new ZombiesCoordinate(mapTile.getTopLeft().getX() + 1, mapTile.getTopLeft().getY() + 1);
+                townSquareLocation = new ZombiesCoordinate(topLeft.getX() + 1, topLeft.getY() + 1);
             } else if (tile.getName().equals(ZombiesTile.HELIPAD)) {
                 assert helipadLocation == null;
-                helipadLocation = new ZombiesCoordinate(mapTile.getTopLeft().getX() + 1, mapTile.getTopLeft().getY() + 1);
+                helipadLocation = new ZombiesCoordinate(topLeft.getX() + 1, topLeft.getY() + 1);
             }
             return true;
         }

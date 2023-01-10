@@ -53,6 +53,21 @@ function api_maps_get(mapId, successFn, errorFn, async = true) {
     });
 }
 
+function api_maptiles_get(mapTileId, successFn, errorFn, async = true) {
+    var url = baseUrl + "maptiles/" + mapTileId;
+
+    jQuery.ajax({
+        url: url,
+        context: document.body,
+        type: 'GET',
+        async: async,
+        headers: {
+        },
+        success: successFn,
+        error: errorFn
+    });
+}
+
 function api_games_post(successFn, errorFn, async = true) {
     var url = baseUrl + "games";
     var request = new Object();
