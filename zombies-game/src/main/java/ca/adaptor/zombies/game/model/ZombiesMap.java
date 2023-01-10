@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
 
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -54,9 +55,7 @@ public class ZombiesMap {
     @Transient @Autowired
     private ZombiesMapTileRepository mapTileRepository;
 
-    public void autowire(
-            @NotNull AutowireCapableBeanFactory autowireFactory
-    ) {
+    public void autowire(@NotNull AutowireCapableBeanFactory autowireFactory) {
         autowireFactory.autowireBean(this);
     }
 
@@ -65,7 +64,6 @@ public class ZombiesMap {
 
         if(!mapTileIds.containsKey(mapTile.getTopLeft())) {
             mapTileIds.put(mapTile.getTopLeft(), mapTile.getId());
-            LOGGER.trace("[map=" + getId() + "] Placed " + mapTile);
 
             var tile = mapTile.getTile();
             if (tile.getName().equals(ZombiesTile.TOWN_SQUARE)) {

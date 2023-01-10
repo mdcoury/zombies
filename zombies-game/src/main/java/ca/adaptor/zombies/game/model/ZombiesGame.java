@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static ca.adaptor.zombies.game.model.ZombiesModelConstants.*;
 import static ca.adaptor.zombies.game.model.ZombiesTile.TILE_SIZE;
@@ -37,19 +38,19 @@ public class ZombiesGame {
     private UUID id;
     @Getter
     @ElementCollection(fetch = FetchType.EAGER)
-    private Set<ZombiesCoordinate> bulletLocations = new HashSet<>();
+    private Set<ZombiesCoordinate> bulletLocations = ConcurrentHashMap.newKeySet();
     @Getter
     @ElementCollection(fetch = FetchType.EAGER)
-    private Set<ZombiesCoordinate> lifeLocations = new HashSet<>();
+    private Set<ZombiesCoordinate> lifeLocations = ConcurrentHashMap.newKeySet();
     @Getter
     @ElementCollection(fetch = FetchType.EAGER)
-    private Set<ZombiesCoordinate> zombieLocations = new HashSet<>();
+    private Set<ZombiesCoordinate> zombieLocations = ConcurrentHashMap.newKeySet();
     /** Maps a player-id to a game-data-id */
     @ElementCollection(fetch = FetchType.EAGER)
-    private Map<UUID, UUID> playerDataIds = new HashMap<>();
+    private Map<UUID, UUID> playerDataIds = new ConcurrentHashMap<>();
     @Getter
     @ElementCollection(fetch = FetchType.EAGER)
-    private Set<UUID> playerIds = new HashSet<>();
+    private Set<UUID> playerIds = ConcurrentHashMap.newKeySet();
     @Getter
     @Column(name = COLUMN_GAME_MAP_ID, nullable = false, updatable = false, unique = true)
     private UUID mapId;
@@ -71,7 +72,7 @@ public class ZombiesGame {
     private ZombiesMapTileRepository mapTileRepository;
 
     @Transient
-    private final Map<UUID, ZombiesGameData> gameData = new HashMap<>();
+    private final Map<UUID, ZombiesGameData> gameDataCache = new HashMap<>();
     @Transient
     private ZombiesMap theMap;
 
@@ -86,11 +87,11 @@ public class ZombiesGame {
 
     @NotNull
     public ZombiesGameData getPlayerData(@NotNull UUID playerId) {
-        if(!gameData.containsKey(playerId)) {
+        if(!gameDataCache.containsKey(playerId)) {
             var playerData = gameDataRepository.findById(playerDataIds.get(playerId)).orElseThrow();
-            gameData.put(playerId, playerData);
+            gameDataCache.put(playerId, playerData);
         }
-        return gameData.get(playerId);
+        return gameDataCache.get(playerId);
     }
 
     public void incrementTurn() { turn++; }
@@ -121,8 +122,8 @@ public class ZombiesGame {
         var map = getMap();
         LOGGER.trace("[game=" + getId() + "] Populating map (" + mapId + ")...");
         //----- Go through all of the map-tiles and place its items
-        for(var mapTileId : map.getMapTileIds().values()) {
-            var mapTile = mapTileRepository.findById(mapTileId).orElseThrow();
+        var mapTiles = mapTileRepository.findAllById(map.getMapTileIds().values());
+        for(var mapTile : mapTiles) {
             var tile = mapTile.getTile();
 
             //----- The town-square starts with _no_ zombies...
@@ -152,8 +153,6 @@ public class ZombiesGame {
     private void populateStreet(@NotNull ZombiesMapTile mapTile) {
         assert populated;
 
-        LOGGER.trace("[game=" + getId() + "] Populating street: " + mapTile.getTile().getName());
-
         var tile = mapTile.getTile();
         var exits = tile.getExits();
         for(var exit : exits) {
@@ -181,8 +180,6 @@ public class ZombiesGame {
     private void populateBuilding(@NotNull ZombiesMapTile mapTile) {
         assert populated;
 
-        LOGGER.trace("[game=" + getId() + "] Populating building: " + mapTile.getTile().getName());
-
         var tile = mapTile.getTile();
         var buildingSquares = tile.getBuildingSquares();
         Collections.shuffle(buildingSquares);
@@ -199,7 +196,7 @@ public class ZombiesGame {
                 ));
                 nz -= 1;
             }
-
+            //----- A tile can have either a bullet or a life, not both
             if (nb > 0) {
                 bulletLocations.add(new ZombiesCoordinate(
                         mapTile.getTopLeft().getX() + buildingSquare.getX(),
@@ -213,9 +210,6 @@ public class ZombiesGame {
                         mapTile.getTopLeft().getY() + buildingSquare.getY()
                 ));
                 nl -= 1;
-            }
-            else {
-                break;
             }
         }
     }

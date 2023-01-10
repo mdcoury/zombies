@@ -1,10 +1,7 @@
 package ca.adaptor.zombies.game.model;
 
 import jakarta.persistence.*;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.ToString;
+import lombok.*;
 import org.hibernate.annotations.Cascade;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -40,7 +37,7 @@ public class ZombiesMapTile {
     @Column(name = COLUMN_MAP_TILE_ROTATION)
     @Enumerated
     private TileRotation rotation;
-    @Getter
+    @Getter @Setter
     @Column(name = COLUMN_MAP_TILE_TOP_LEFT)
     @Embedded
     private ZombiesCoordinate topLeft;
@@ -60,7 +57,6 @@ public class ZombiesMapTile {
         var squares = tile.getSquareTypes();
         switch(rotation) {
             case ROT_0 ->
-            //noinspection RedundantLabeledSwitchRuleCodeBlock
             {
                 System.arraycopy(squares, 0, squaresCache, 0, 9);
             }

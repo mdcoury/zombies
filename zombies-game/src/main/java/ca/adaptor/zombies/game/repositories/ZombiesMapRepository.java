@@ -13,6 +13,5 @@ import java.util.UUID;
 @Repository
 @Transactional
 public interface ZombiesMapRepository extends JpaRepository<ZombiesMap, UUID> {
-    @Query("select m.id from #{#entityName} m")
-    Optional<List<UUID>> findAllIds();
+
 }

@@ -24,7 +24,7 @@ public class ZombiesPlayerController {
     @PostMapping
     public ResponseEntity<UUID> create() {
         var player = repository.saveAndFlush(new ZombiesPlayer());
-        LOGGER.debug("Created player: " + player);
+        LOGGER.debug("Created player: " + player.getId());
         return ResponseEntity.ok(player.getId());
     }
 }

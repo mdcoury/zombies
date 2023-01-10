@@ -28,7 +28,7 @@ function connect() {
                 processGameRequest(data);
                 break;
             case 'UPDATE':
-//                processGameUpdate(data);
+                processGameUpdate(data);
                 break;
        }
     }
@@ -57,6 +57,7 @@ function loadMap() {
         mapId,
         function(data) {
             map = data;
+            drawMap();
         },
         function(jqXHR, textStatus, errorThrown) {
             $(document).find("#socketInf").text("onError: " + textStatus).show();
@@ -132,18 +133,17 @@ function move(direction) {
     socket.send(JSON.stringify(json));
 }
 
-//    gameCanvas = document.getElementById(canvasId);
-//    gameCanvas.width = gameCanvasWidth;
-//    gameCanvas.height = gameCanvasHeight;
-//    gameCanvas.hidden = "false";
-//    gameCanvas.style.display = "block";
-//    var context = gameCanvas.getContext("2d");
-//    context.fillStyle = "#888888";
-//    context.fillRect(0,0,gameCanvas.width,gameCanvas.height);
+function drawMap() {
+    var gameCanvas = document.getElementById("gameCanvas");
+    gameCanvas.width = 640;
+    gameCanvas.height = 640;
+    gameCanvas.hidden = "false";
+    gameCanvas.style.display = "block";
+    var context = gameCanvas.getContext("2d");
+    context.fillStyle = "#888888";
+    context.fillRect(0,0,gameCanvas.width,gameCanvas.height);
 
-
-//    var url = baseUrl + "ws/actions";
-//    gameSocket = new WebSocket(getBaseSocketUrl() + url);
-//    gameSocket.onopen = onOpenFn;
-//    gameSocket.onmessage = onMessageFn;
-//    gameSocket.onclose = onCloseFn;
+    for(var tl in map.mapTileIds) {
+        mapTileId = map.mapTileIds[tl];
+    }
+}

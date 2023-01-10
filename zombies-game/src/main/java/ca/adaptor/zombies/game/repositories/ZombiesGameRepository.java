@@ -11,7 +11,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-@Transactional
+//@Transactional
 public interface ZombiesGameRepository extends JpaRepository<ZombiesGame, UUID> {
     @Query("SELECT g.id FROM #{#entityName} g")
     Optional<List<UUID>> findAllIds();

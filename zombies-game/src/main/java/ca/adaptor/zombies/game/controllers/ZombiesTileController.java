@@ -35,9 +35,12 @@ public class ZombiesTileController {
 
     @GetMapping(value = "{tileId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ZombiesTile> getTile(@PathVariable UUID tileId) {
-        var retOpt = tileRepository.findById(tileId);
-        LOGGER.debug("Retrieving tile: " + retOpt);
-        return retOpt.map(ResponseEntity::ok)
-                .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
+        var tileOpt = tileRepository.findById(tileId);
+        if(tileOpt.isPresent()) {
+            var tile = tileOpt.get();
+            LOGGER.debug("Retrieving tile: " + tile.getId());
+            return ResponseEntity.ok(tile);
+        }
+        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
 }
