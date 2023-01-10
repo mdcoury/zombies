@@ -30,7 +30,7 @@ import java.util.function.Consumer;
 @EnableWebSocket
 public class ZombiesWsController implements WebSocketConfigurer {
     private static final Logger LOGGER = LoggerFactory.getLogger(ZombiesWsController.class);
-    private static final int TIMEOUT_S = 30;
+    private static final int TIMEOUT_S = 120;
 
     private final Map<String, WebSocketSession> theSessionsById = new ConcurrentHashMap<>();
     private final Map<String, IZombiesGameBroker> theBrokersBySessionId = new ConcurrentHashMap<>();
@@ -76,7 +76,7 @@ public class ZombiesWsController implements WebSocketConfigurer {
             var broker = engine.getBroker(hello.getPlayerId());
             if(broker != null) {
                 if(!theBrokersBySessionId.containsKey(sessionId)) {
-                    LOGGER.trace("Processed HELLO: sessionId=" + sessionId + ", brokerId=" + broker.getBrokerId());
+                    LOGGER.trace("Processed HELLO: session-ID=" + sessionId + ", broker-ID=" + broker.getBrokerId());
                     theBrokersBySessionId.put(sessionId, broker);
                     theSessionIdsByBrokerId.put(broker.getBrokerId(), sessionId);
                     broker.setMessageHandler(this);
@@ -94,14 +94,18 @@ public class ZombiesWsController implements WebSocketConfigurer {
             assert theSessionsById.containsKey(sessionId);
             assert theBrokersBySessionId.containsKey(sessionId);
             assert theSessionIdsByBrokerId.containsKey(theBrokersBySessionId.get(sessionId).getBrokerId());
-            assert messageCallbacks.containsKey(reply.getMessageId());
 
             if(theBrokersBySessionId.containsKey(sessionId)) {
-                LOGGER.trace("Processing reply: " + reply);
-                messageCallbacks.get(reply.getMessageId()).accept(reply);
+                LOGGER.trace("Processing REPLY: " + reply);
+                if(messageCallbacks.containsKey(reply.getMessageId())) {
+                    messageCallbacks.get(reply.getMessageId()).accept(reply);
+                }
+                else {
+                    LOGGER.debug("Unsolicited reply received: " + reply + ", session-ID=" + sessionId);
+                }
             }
             else {
-                throw new IllegalArgumentException();
+                throw new IllegalArgumentException("There is no broker for this session! (session-ID=" + sessionId + ")");
             }
         }
 
@@ -116,6 +120,7 @@ public class ZombiesWsController implements WebSocketConfigurer {
             var ret = new AtomicReference<M>();
             var messageId = outMessage.getMessageId();
             var latch = new CountDownLatch(1);
+            LOGGER.trace("Adding callback for message: id=" + messageId);
             messageCallbacks.put(messageId, (inMessage) -> {
                 if(inMessage == null || !inMessage.getMessageId().equals(messageId)) {
                     throw new IllegalArgumentException("Invalid incoming message: " + inMessage);
@@ -131,10 +136,12 @@ public class ZombiesWsController implements WebSocketConfigurer {
                 sendMessage(outMessage, brokerId);
                 //noinspection ResultOfMethodCallIgnored
                 latch.await(TIMEOUT_S, TimeUnit.SECONDS);
-                messageCallbacks.remove(messageId);
             }
             catch(IOException | InterruptedException e) {
                 throw new RuntimeException(e);
+            }
+            finally {
+                messageCallbacks.remove(messageId);
             }
             return ret.get();
         }
@@ -168,9 +175,10 @@ public class ZombiesWsController implements WebSocketConfigurer {
             if(theSessionsById.containsKey(session.getId())) {
                 LOGGER.trace("handleMessage: session=" + session + ", message=" + message + ", handler-id=" + handlerId);
                 var wsMessage = mapper.readValue(message.getPayload().toString(), AbstractZombiesWsMessage.class);
+                LOGGER.trace("wsMessage: " + wsMessage);
                 switch (wsMessage.getType()) {
                     case HELLO -> processHelloMessage(session.getId(), (AbstractZombiesWsMessage.Hello) wsMessage);
-                    case REQUEST -> processRequestReply(session.getId(), (AbstractZombiesWsMessage.AbstractRequestMessage) wsMessage);
+                    case REPLY -> processRequestReply(session.getId(), (AbstractZombiesWsMessage.AbstractRequestMessage) wsMessage);
                     default -> throw new IllegalArgumentException();
                 }
             }

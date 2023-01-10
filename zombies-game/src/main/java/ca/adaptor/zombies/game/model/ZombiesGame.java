@@ -38,19 +38,19 @@ public class ZombiesGame {
     private UUID id;
     @Getter
     @ElementCollection(fetch = FetchType.EAGER)
-    private Set<ZombiesCoordinate> bulletLocations = ConcurrentHashMap.newKeySet();
+    private Set<ZombiesCoordinate> bulletLocations = new HashSet<>();
     @Getter
     @ElementCollection(fetch = FetchType.EAGER)
-    private Set<ZombiesCoordinate> lifeLocations = ConcurrentHashMap.newKeySet();
+    private Set<ZombiesCoordinate> lifeLocations = new HashSet<>();
     @Getter
     @ElementCollection(fetch = FetchType.EAGER)
-    private Set<ZombiesCoordinate> zombieLocations = ConcurrentHashMap.newKeySet();
+    private Set<ZombiesCoordinate> zombieLocations = new HashSet<>();
     /** Maps a player-id to a game-data-id */
     @ElementCollection(fetch = FetchType.EAGER)
     private Map<UUID, UUID> playerDataIds = new ConcurrentHashMap<>();
     @Getter
     @ElementCollection(fetch = FetchType.EAGER)
-    private Set<UUID> playerIds = ConcurrentHashMap.newKeySet();
+    private Set<UUID> playerIds = new HashSet<>();
     @Getter
     @Column(name = COLUMN_GAME_MAP_ID, nullable = false, updatable = false, unique = true)
     private UUID mapId;
@@ -124,18 +124,16 @@ public class ZombiesGame {
         //----- Go through all of the map-tiles and place its items
         var mapTiles = mapTileRepository.findAllById(map.getMapTileIds().values());
         for(var mapTile : mapTiles) {
-            var tile = mapTile.getTile();
-
             //----- The town-square starts with _no_ zombies...
-            if(!tile.getName().equals(ZombiesTile.TOWN_SQUARE)) {
+            if(!mapTile.isTownSquare()) {
                 //----- See if it's a building...
-                if (tile.isBuilding()) {
+                if (mapTile.isBuilding()) {
                     //----- If it is, then it will have bullets and/or life and/or zombies, which should get placed into
                     //      the building
                     populateBuilding(mapTile);
-                } else if (tile.getName().equals(ZombiesTile.HELIPAD)) {
+                } else if (mapTile.isHelipad()) {
                     //----- The helipad starts with a zombie on every square
-                    for (int i = 0; i < tile.getNumZombies(); i++) {
+                    for (int i = 0; i < mapTile.getNumZombies(); i++) {
                         zombieLocations.add(new ZombiesCoordinate(
                                 mapTile.getTopLeft().getX() + (i % TILE_SIZE),
                                 mapTile.getTopLeft().getY() + (i / TILE_SIZE)
@@ -153,9 +151,8 @@ public class ZombiesGame {
     private void populateStreet(@NotNull ZombiesMapTile mapTile) {
         assert populated;
 
-        var tile = mapTile.getTile();
         // TODO: These need to be rotated!!
-        var exits = tile.getExits();
+        var exits = mapTile.getExits();
         for(var exit : exits) {
             switch(exit) {
                 case NORTH -> zombieLocations.add(new ZombiesCoordinate(
@@ -181,14 +178,13 @@ public class ZombiesGame {
     private void populateBuilding(@NotNull ZombiesMapTile mapTile) {
         assert populated;
 
-        var tile = mapTile.getTile();
         // TODO: These need to be rotated!!
-        var buildingSquares = tile.getBuildingSquares();
+        var buildingSquares = mapTile.getBuildingSquares();
         Collections.shuffle(buildingSquares);
 
-        int nb = tile.getNumBullets();
-        int nl = tile.getNumLife();
-        int nz = tile.getNumZombies();
+        int nb = mapTile.getNumBullets();
+        int nl = mapTile.getNumLife();
+        int nz = mapTile.getNumZombies();
 
         for(var buildingSquare : buildingSquares) {
             if(nz > 0) {

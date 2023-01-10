@@ -6,6 +6,9 @@ import org.hibernate.annotations.Cascade;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 
 import static ca.adaptor.zombies.game.model.ZombiesModelConstants.*;
@@ -28,7 +31,6 @@ public class ZombiesMapTile {
     @GeneratedValue
     @Column(name = COLUMN_MAP_TILE_ID, updatable = false, nullable = false)
     private UUID id;
-    @Getter
     @Cascade(value = { MERGE, SAVE_UPDATE })
     @JoinColumn(name = COLUMN_TILE_ID, nullable = false, updatable = false)
     @ManyToOne(fetch = FetchType.EAGER)
@@ -53,7 +55,11 @@ public class ZombiesMapTile {
         this.rotation = rotation;
     }
 
-    private void cacheRotation() {
+    private void tryCacheRotation() {
+        if(cached) {
+            return;
+        }
+
         var squares = tile.getSquareTypes();
         switch(rotation) {
             case ROT_0 ->
@@ -98,14 +104,49 @@ public class ZombiesMapTile {
             }
             default -> throw new IllegalArgumentException();
         }
+        cached = true;
+    }
+
+    @NotNull
+    public ZombiesTile.SquareType[] getSquareTypes() {
+        tryCacheRotation();
+        return Arrays.copyOf(squaresCache, squaresCache.length);
+    }
+
+    @NotNull
+    public UUID getTileId() { return tile.getId(); }
+    public boolean isTownSquare() { return tile.getName().equals(ZombiesTile.TOWN_SQUARE); }
+    public boolean isHelipad() { return tile.getName().equals(ZombiesTile.HELIPAD); }
+    public boolean isBuilding() { return tile.isBuilding(); }
+    public int getNumBullets() { return tile.getNumBullets(); }
+    public int getNumLife() { return tile.getNumLife(); }
+    public int getNumZombies() { return tile.getNumZombies(); }
+    @NotNull
+    public List<ZombiesDirection> getExits() {
+        tryCacheRotation();
+        var ret = new ArrayList<ZombiesDirection>();
+        if(squaresCache[1] == ZombiesTile.SquareType.ROAD) { ret.add(ZombiesDirection.NORTH); };
+        if(squaresCache[3] == ZombiesTile.SquareType.ROAD) { ret.add(ZombiesDirection.WEST); };
+        if(squaresCache[5] == ZombiesTile.SquareType.ROAD) { ret.add(ZombiesDirection.EAST); };
+        if(squaresCache[7] == ZombiesTile.SquareType.ROAD) { ret.add(ZombiesDirection.SOUTH); };
+        return ret;
+    }
+    @NotNull
+    public List<ZombiesCoordinate> getBuildingSquares() {
+        tryCacheRotation();
+        var ret = new ArrayList<ZombiesCoordinate>();
+        for(int i = 0; i < TILE_SIZE*TILE_SIZE; i++) {
+            var type = squaresCache[i];
+            if(type == ZombiesTile.SquareType.BUILDING || type == ZombiesTile.SquareType.DOOR) {
+                ret.add(new ZombiesCoordinate(i % TILE_SIZE, i / TILE_SIZE));
+            }
+        }
+        return ret;
     }
 
     @NotNull
     public ZombiesTile.SquareType get(int x, int y) {
-        if(!cached) {
-            cacheRotation();
-            cached = true;
-        }
+        tryCacheRotation();
         return squaresCache[x + y*TILE_SIZE];
     }
 

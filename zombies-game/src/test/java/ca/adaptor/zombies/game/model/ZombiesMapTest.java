@@ -63,6 +63,6 @@ public class ZombiesMapTest {
         var mtOpt = mtRepo.findById(mtId);
         Assertions.assertFalse(mtOpt.isEmpty());
         var mt = mtOpt.get();
-        Assertions.assertEquals(testTile, mt.getTile());
+        Assertions.assertEquals(testTile.getId(), mt.getTileId());
     }
 }

@@ -4,7 +4,11 @@ var mapId;
 
 var game;
 var map;
+var mapTiles = new Array();
 var gameData;
+var bulletLocations;
+var lifeLocations;
+var zombieLocations;
 
 function connect() {
     gameId = localStorage.getItem("game-id");
@@ -43,6 +47,9 @@ function loadGame() {
         gameId,
         function(data) {
             game = data;
+            bulletLocations = game.bulletLocations;
+            lifeLocations = game.lifeLocations;
+            zombieLocations = game.zombieLocations;
             mapId = game.mapId;
             loadMap();
         },
@@ -57,7 +64,7 @@ function loadMap() {
         mapId,
         function(data) {
             map = data;
-            drawMap();
+            initGameCanvas();
             loadMapTiles();
         },
         function(jqXHR, textStatus, errorThrown) {
@@ -76,6 +83,7 @@ function loadMapTile(mapTileId) {
     api_maptiles_get(
         mapTileId,
         function(data) {
+            mapTiles.push(data);
             drawMapTile(data);
         },
         function(jqXHR, textStatus, errorThrown) {
@@ -106,9 +114,63 @@ function processGameRequest(request) {
             requestDiscards(request);
             break;
     }
+    redrawBoard();
 }
 function processGameUpdate(update) {
-    $(document).find("#updateInf").text(JSON.stringify(update)).show();
+    $(document).find("#gameTurnInf").text("Turn: " + update.turn + ", Phase: " + update.phase).show();
+    if(update.zombieMovements || update.zombieKills) {
+        updateZombieLocations(update);
+    }
+    if(update.roll) {
+        $(document).find("#gameTurnInf").text("Roll=" + update.roll).show();
+    }
+    if(update.playerData) {
+        gameData = update.playerData;
+        drawPlayerData();
+    }
+}
+function moveZombie(src, dest) {
+    var found = false;
+    for(var i = 0; i < zombieLocations.length && !found; i++) {
+        var loc = zombieLocations[i];
+        if(loc.x == src.x && loc.y == src.y) {
+            found = true;
+            zombieLocations[i] = dest;
+        }
+    }
+}
+function removeZombie(src) {
+    var found = false;
+    for(var i = 0; i < zombieLocations.length && !found; i++) {
+        var loc = zombieLocations[i];
+        if(loc.x == src.x && loc.y == src.y) {
+            found = true;
+            zombieLocations.splice(i,1);
+        }
+    }
+}
+function updateBulletLocations(update) {
+    redrawBoard();
+}
+function updateLifeLocations(update) {
+    redrawBoard();
+}
+function updateZombieLocations(update) {
+    if(update.zombieMovements) {
+        var keys = Object.keys(update.zombieMovements);
+        for(var i = 0; i < keys.length; i++) {
+            var key = keys[i];
+            var src = JSON.parse(key);
+            var dest = update.zombieMovements[key];
+            moveZombie(src, dest);
+        }
+    }
+    if(update.zombieKills) {
+        for(var i = 0; i < update.zombieKills.length; i++) {
+            removeZombie(update.zombieKills[i]);
+        }
+    }
+    redrawBoard();
 }
 
 function requestRoll(request) {
@@ -130,29 +192,54 @@ function requestUseBullets(request) {
 function rollDice() {
     var div = $(document).find("#rollDiceDiv");
     div[0].style.display = "none";
-    socket.send(div[0].dataset.message);
+    if(div[0].dataset.message) {
+        var json = JSON.parse(div[0].dataset.message);
+        json.type = "REPLY";
+        socket.send(JSON.stringify(json));
+    }
+    div[0].dataset.message = null;
 }
 function useBullets(use) {
     var div = $(document).find("#useBulletsDiv");
-    div[0].style.display = "block";
-    var json = JSON.parse(div[0].dataset.message);
-    json.usingBullets = use;
-    socket.send(JSON.stringify(json));
+    div[0].style.display = "none";
+    if(div[0].dataset.message) {
+        var json = JSON.parse(div[0].dataset.message);
+        json.type = "REPLY";
+        json.usingBullets = use;
+        socket.send(JSON.stringify(json));
+    }
+    div[0].dataset.message = null;
 }
 function move(direction) {
     var div = $(document).find("#moveDiv");
-    div[0].style.display = "block";
-    var json = JSON.parse(div[0].dataset.message);
-    if(direction != null) {
-        json.direction = direction;
+    div[0].style.display = "none";
+    if(div[0].dataset.message) {
+        var json = JSON.parse(div[0].dataset.message);
+        json.type = "REPLY";
+        if(direction != null) {
+            json.direction = direction;
+        }
+        socket.send(JSON.stringify(json));
     }
-    socket.send(JSON.stringify(json));
+    div[0].dataset.message = null;
 }
 
-var SQUARE_SIZE = 45;
+var SQUARE_SIZE = 24;
 var OFFSET = SQUARE_SIZE/3;
+var FONT = "bold "+(SQUARE_SIZE-OFFSET)+"px Arial";
 
-function drawMap() {
+function redrawBoard() {
+//    initGameCanvas();
+    for(var i = 0; i < mapTiles.length; i++) {
+        drawMapTile(mapTiles[i]);
+    }
+    drawBullets();
+    drawLife();
+    drawZombies();
+    drawPlayer();
+}
+
+function initGameCanvas() {
     var gameCanvas = document.getElementById("gameCanvas");
     gameCanvas.width = 1800;
     gameCanvas.height = 1800;
@@ -163,18 +250,15 @@ function drawMap() {
     context.fillRect(0,0,gameCanvas.width,gameCanvas.height);
 }
 
-var rotmat = {
-    ROT_0:   [ 0, 1, 2, 3, 4, 5, 6, 7, 8 ],
-    ROT_90:  [ 6, 3, 0, 7, 4, 1, 8, 5, 2 ],
-    ROT_180: [ 8, 7, 6, 5, 4, 3, 2, 1, 0 ],
-    ROT_270: [ 2, 5, 8, 1, 4, 7, 0, 3, 6 ]
-};
+function getX(x) { return (x - map.minx) * SQUARE_SIZE; }
+function getY(y) { return (y - map.miny) * SQUARE_SIZE; }
 
-function getX(x) {
-    return (x - map.minx) * SQUARE_SIZE;
-}
-function getY(y) {
-    return (y - map.miny) * SQUARE_SIZE;
+function drawPlayerData() {
+    $(document).find("#playerDataInf").text(
+        "Location = (" + gameData.location.x + "," + gameData.location.y + ")"
+        + ", # Bullets = " + gameData.numBullets
+        + ", # Life = " + gameData.numLife
+    ).show();
 }
 
 function drawMapTile(mapTile) {
@@ -186,7 +270,7 @@ function drawMapTile(mapTile) {
     var y = getY(tl.y);
     for(var i = 0; i < 3; i++) {
         for(var j = 0; j < 3; j++) {
-            var sqType = mapTile.tile.squareTypes[rotmat[mapTile.rotation][i + j*3]];
+            var sqType = mapTile.squareTypes[i + j*3];
             context.fillStyle = getFill(sqType);
             context.fillRect(x + i*SQUARE_SIZE, y + j*SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE);
         }
@@ -196,26 +280,33 @@ function drawMapTile(mapTile) {
     drawZombies();
 }
 
-var font = "bold 30px Arial";
-
+function drawPlayer() {
+    var gameCanvas = document.getElementById("gameCanvas");
+    var context = gameCanvas.getContext("2d");
+    context.font = FONT;
+    context.fillStyle = '#000000';
+    context.strokeStyle = '#ffffff';
+    context.strokeText('P', getX(gameData.location.x) + OFFSET, getY(gameData.location.y) + SQUARE_SIZE - OFFSET, SQUARE_SIZE)
+    context.fillText('P', getX(gameData.location.x) + OFFSET, getY(gameData.location.y) + SQUARE_SIZE - OFFSET, SQUARE_SIZE)
+}
 function drawBullets() {
     var gameCanvas = document.getElementById("gameCanvas");
     var context = gameCanvas.getContext("2d");
-    context.font = font;
+    context.font = FONT;
     context.fillStyle = '#000000';
-    for(var i = 0; i < game.bulletLocations.length; i++) {
-        var loc = game.bulletLocations[i];
+    for(var i = 0; i < bulletLocations.length; i++) {
+        var loc = bulletLocations[i];
         context.fillText('⦿', getX(loc.x) + OFFSET, getY(loc.y) + SQUARE_SIZE - OFFSET, SQUARE_SIZE);
     }
 }
 function drawLife() {
     var gameCanvas = document.getElementById("gameCanvas");
     var context = gameCanvas.getContext("2d");
-    context.font = font;
+    context.font = FONT;
     context.fillStyle = '#FF0000';
     context.strokeStyle = '#000000';
-    for(var i = 0; i < game.lifeLocations.length; i++) {
-        var loc = game.lifeLocations[i];
+    for(var i = 0; i < lifeLocations.length; i++) {
+        var loc = lifeLocations[i];
         context.strokeText('♥', getX(loc.x) + OFFSET, getY(loc.y) + SQUARE_SIZE - OFFSET, SQUARE_SIZE);
         context.fillText('♥', getX(loc.x) + OFFSET, getY(loc.y) + SQUARE_SIZE - OFFSET, SQUARE_SIZE);
     }
@@ -223,11 +314,11 @@ function drawLife() {
 function drawZombies() {
     var gameCanvas = document.getElementById("gameCanvas");
     var context = gameCanvas.getContext("2d");
-    context.font = font;
+    context.font = FONT;
     context.fillStyle = '#FFFF00';
     context.strokeStyle = '#000000';
-    for(var i = 0; i < game.zombieLocations.length; i++) {
-        var loc = game.zombieLocations[i];
+    for(var i = 0; i < zombieLocations.length; i++) {
+        var loc = zombieLocations[i];
         context.strokeText('Z', getX(loc.x) + OFFSET, getY(loc.y) + SQUARE_SIZE - OFFSET, SQUARE_SIZE);
         context.fillText('Z', getX(loc.x) + OFFSET, getY(loc.y) + SQUARE_SIZE - OFFSET, SQUARE_SIZE);
     }

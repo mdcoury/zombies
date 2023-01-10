@@ -74,11 +74,10 @@ public class ZombiesMap {
             minx = Math.min(minx, topLeft.getX());
             miny = Math.min(miny, topLeft.getY());
 
-            var tile = mapTile.getTile();
-            if (tile.getName().equals(ZombiesTile.TOWN_SQUARE)) {
+            if (mapTile.isTownSquare()) {
                 assert townSquareLocation == null;
                 townSquareLocation = new ZombiesCoordinate(topLeft.getX() + 1, topLeft.getY() + 1);
-            } else if (tile.getName().equals(ZombiesTile.HELIPAD)) {
+            } else if (mapTile.isHelipad()) {
                 assert helipadLocation == null;
                 helipadLocation = new ZombiesCoordinate(topLeft.getX() + 1, topLeft.getY() + 1);
             }
