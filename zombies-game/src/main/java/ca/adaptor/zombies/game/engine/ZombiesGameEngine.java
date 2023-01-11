@@ -232,6 +232,7 @@ public class ZombiesGameEngine {
                 //  3. Draw back up to three event cards, if you have less than three.
                 var eventCardIds = playerData.getEventCardIds();
                 while(eventCardIds.size() < MAX_NUM_EVENT_CARDS) {
+                    broadcastUpdateMessage(createUpdateMessage(DRAW_CARDS));
                     LOGGER.debug("Drawing card... (Game=" + theGame.getId() + ", Engine=" + gameEngineId + ", Player=" + playerId + ",Turn=" + theGame.getTurn() + ")");
                     eventCardIds.add(drawCard());
                 }
@@ -242,6 +243,7 @@ public class ZombiesGameEngine {
                 //  5. Move up to the number of spaces indicated by the movement roll. You must stop
                 //     and combat on any space occupied by a zombie. You may continue your movement
                 //     after defeating a zombie up to your movement total.
+                broadcastUpdateMessage(createUpdateMessage(MOVEMENT));
                 resolveMovement(playerId);
                 if(playerData.isPlayerDead()) {
                     //----- reset the player and then continue
@@ -251,10 +253,12 @@ public class ZombiesGameEngine {
                 }
                 //  6. After moving, roll a six-sided die. You must move that number of zombies,
                 //     one space each, if able.
+                broadcastUpdateMessage(createUpdateMessage(ZOMBIES));
                 resolveZombieMovement(playerId);
                 //  7. At the end of the turn, you may discard one event card from your hand.
                 //     Play then proceeds clockwise around the table
                 if(playerData.getEventCardIds().size() > 0) {
+                    broadcastUpdateMessage(createUpdateMessage(DISCARD_CARDS));
                     resolveEventCardDiscards(playerId);
                 }
 
@@ -311,6 +315,7 @@ public class ZombiesGameEngine {
      *      three life and three bullet tokens.
      */
     private void resolveCombat(@NotNull UUID playerId) {
+        broadcastUpdateMessage(createUpdateMessage(COMBAT));
         var data = theGame.getPlayerData(playerId);
         var location = data.getLocation();
 

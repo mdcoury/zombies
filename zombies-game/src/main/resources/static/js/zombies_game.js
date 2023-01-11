@@ -117,12 +117,15 @@ function processGameRequest(request) {
     redrawBoard();
 }
 function processGameUpdate(update) {
-    $(document).find("#gameTurnInf").text("Turn: " + update.turn + ", Phase: " + update.phase).show();
+    if(update.turn && update.phase) {
+        $(document).find("#gameTurnInf").text("Turn: " + update.turn + ", Phase: " + update.phase).show();
+    }
+
     if(update.zombieMovements || update.zombieKills) {
         updateZombieLocations(update);
     }
     if(update.roll) {
-        $(document).find("#gameTurnInf").text("Roll=" + update.roll).show();
+        $(document).find("#rollInf").text("Roll=" + update.roll).show();
     }
     if(update.playerData) {
         gameData = update.playerData;
@@ -174,6 +177,7 @@ function updateZombieLocations(update) {
 }
 
 function requestRoll(request) {
+    $(document).find("#rollInf").text("Roll=").show();
     var div = $(document).find("#rollDiceDiv");
     div[0].dataset.message = JSON.stringify(request);
     div[0].style.display = "block";
