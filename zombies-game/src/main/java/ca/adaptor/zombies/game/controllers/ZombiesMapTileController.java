@@ -1,7 +1,7 @@
 package ca.adaptor.zombies.game.controllers;
 
 import ca.adaptor.zombies.game.model.ZombiesMapTile;
-import ca.adaptor.zombies.game.repositories.ZombiesMapTileRepository;
+import ca.adaptor.zombies.game.util.ZombiesEntityManagerHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,11 +22,11 @@ import static ca.adaptor.zombies.game.controllers.ZombiesControllerConstants.PAT
 public class ZombiesMapTileController {
     private static final Logger LOGGER = LoggerFactory.getLogger(ZombiesMapTileController.class);
     @Autowired
-    private ZombiesMapTileRepository mapTileRepository;
+    private ZombiesEntityManagerHelper entityManager;
 
     @GetMapping(path = "{mapTileId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ZombiesMapTile> getMapTile(@PathVariable UUID mapTileId) {
-        var mapTileOpt = mapTileRepository.findById(mapTileId);
+        var mapTileOpt = entityManager.findById(mapTileId, ZombiesMapTile.class);
         if(mapTileOpt.isPresent()) {
             var mapTile = mapTileOpt.get();
             LOGGER.debug("Retrieving map-tile: " + mapTile.getId());

@@ -1,8 +1,6 @@
 package ca.adaptor.zombies.game.model;
 
-import ca.adaptor.zombies.game.repositories.ZombiesMapRepository;
-import ca.adaptor.zombies.game.repositories.ZombiesMapTileRepository;
-import ca.adaptor.zombies.game.repositories.ZombiesTileRepository;
+import ca.adaptor.zombies.game.util.ZombiesEntityManagerHelper;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,30 +12,23 @@ import java.util.UUID;
 @SpringBootTest
 public class ZombiesMapTest {
     @Autowired
-    private ZombiesTileRepository tRepo;
-    @Autowired
-    private ZombiesMapRepository mRepo;
-    @Autowired
-    private ZombiesMapTileRepository mtRepo;
+    private ZombiesEntityManagerHelper entityManagerHelper;
     private ZombiesTile testTile;
 
     @BeforeEach
     public void setup() {
-        testTile = tRepo.findByName("_elbow_1").orElseThrow();
+        testTile = entityManagerHelper.findByName("_elbow_1", ZombiesTile.class).orElseThrow();
     }
 
     private UUID createMap() {
         var mt = new ZombiesMapTile(testTile, new ZombiesCoordinate(0,0), ZombiesMapTile.TileRotation.ROT_0);
-        mt = mtRepo.save(mt);
+        mt = entityManagerHelper.save(mt);
         var map = new ZombiesMap();
         var added = map.add(mt);
         Assertions.assertTrue(added);
         Assertions.assertNull(map.getId());
-        map = mRepo.save(map);
+        map = entityManagerHelper.save(map);
         Assertions.assertNotNull(map.getId());
-
-        mtRepo.flush();
-        mRepo.flush();
 
         return map.getId();
     }
@@ -50,7 +41,7 @@ public class ZombiesMapTest {
     @Test
     public void mapSaveAndRetrieveTest1() {
         var mapId = createMap();
-        var mapOpt = mRepo.findById(mapId);
+        var mapOpt = entityManagerHelper.findById(mapId, ZombiesMap.class);
         Assertions.assertFalse(mapOpt.isEmpty());
         var map = mapOpt.get();
         Assertions.assertEquals(mapId, map.getId());
@@ -60,7 +51,7 @@ public class ZombiesMapTest {
         var mtId = map.getMapTileId(zc);
         Assertions.assertNotNull(mtId);
 
-        var mtOpt = mtRepo.findById(mtId);
+        var mtOpt = entityManagerHelper.findById(mtId, ZombiesMapTile.class);
         Assertions.assertFalse(mtOpt.isEmpty());
         var mt = mtOpt.get();
         Assertions.assertEquals(testTile.getId(), mt.getTileId());

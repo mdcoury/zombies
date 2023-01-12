@@ -1,7 +1,6 @@
 package ca.adaptor.zombies.game.model;
 
-import ca.adaptor.zombies.game.repositories.ZombiesMapTileRepository;
-import ca.adaptor.zombies.game.repositories.ZombiesTileRepository;
+import ca.adaptor.zombies.game.util.ZombiesEntityManagerHelper;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,26 +12,24 @@ import static ca.adaptor.zombies.game.model.ZombiesTile.SquareType.ROAD;
 @SpringBootTest
 public class ZombiesMapTileTest {
     @Autowired
-    private ZombiesTileRepository tRepo;
-    @Autowired
-    private ZombiesMapTileRepository mtRepo;
+    private ZombiesEntityManagerHelper entityManagerHelper;
 
     @Test
     public void mapTileSimpleSaveTest() {
         var mapTile = new ZombiesMapTile(
-                tRepo.findByName("_elbow_1").orElseThrow(),
+                entityManagerHelper.findByName("_elbow_1", ZombiesTile.class).orElseThrow(),
                 new ZombiesCoordinate(0,0),
                 ZombiesMapTile.TileRotation.ROT_270
         );
         Assertions.assertNull(mapTile.getId());
-        mapTile = mtRepo.save(mapTile);
+        mapTile = entityManagerHelper.save(mapTile);
         Assertions.assertNotNull(mapTile.getId());
     }
 
     @Test
     public void tileRotationTest_0() {
         var tile = new ZombiesMapTile(
-                tRepo.findByName("_elbow_1").orElseThrow(),
+                entityManagerHelper.findByName("_elbow_1", ZombiesTile.class).orElseThrow(),
                 new ZombiesCoordinate(0,0),
                 ZombiesMapTile.TileRotation.ROT_0
         );
@@ -51,7 +48,7 @@ public class ZombiesMapTileTest {
     @Test
     public void tileRotationTest_90() {
         var tile = new ZombiesMapTile(
-                tRepo.findByName("_elbow_1").orElseThrow(),
+                entityManagerHelper.findByName("_elbow_1", ZombiesTile.class).orElseThrow(),
                 new ZombiesCoordinate(0,0),
                 ZombiesMapTile.TileRotation.ROT_90
         );
@@ -71,7 +68,7 @@ public class ZombiesMapTileTest {
     @Test
     public void tileRotationTest_180() {
         var tile = new ZombiesMapTile(
-                tRepo.findByName("_elbow_1").orElseThrow(),
+                entityManagerHelper.findByName("_elbow_1", ZombiesTile.class).orElseThrow(),
                 new ZombiesCoordinate(0,0),
                 ZombiesMapTile.TileRotation.ROT_180
         );
@@ -91,7 +88,7 @@ public class ZombiesMapTileTest {
     @Test
     public void tileRotationTest_270() {
         var tile = new ZombiesMapTile(
-                tRepo.findByName("_elbow_1").orElseThrow(),
+                entityManagerHelper.findByName("_elbow_1", ZombiesTile.class).orElseThrow(),
                 new ZombiesCoordinate(0,0),
                 ZombiesMapTile.TileRotation.ROT_270
         );

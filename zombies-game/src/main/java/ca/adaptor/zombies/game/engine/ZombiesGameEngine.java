@@ -2,10 +2,7 @@ package ca.adaptor.zombies.game.engine;
 
 import ca.adaptor.zombies.game.messages.ZombiesGameUpdateMessage;
 import ca.adaptor.zombies.game.model.*;
-import ca.adaptor.zombies.game.repositories.ZombiesGameDataRepository;
-import ca.adaptor.zombies.game.repositories.ZombiesGameRepository;
-import ca.adaptor.zombies.game.repositories.ZombiesMapRepository;
-import ca.adaptor.zombies.game.repositories.ZombiesMapTileRepository;
+import ca.adaptor.zombies.game.util.ZombiesEntityManagerHelper;
 import lombok.Getter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -154,16 +151,8 @@ public class ZombiesGameEngine {
     private long serialNumberCtr = 0;
 
     private final Map<UUID, IZombiesGameBroker> theBrokersByPlayerId = new HashMap<>();
-//region Autowired fields
     @Autowired
-    private ZombiesMapRepository mapRepository;
-    @Autowired
-    private ZombiesMapTileRepository mapTileRepository;
-    @Autowired
-    private ZombiesGameRepository gameRepository;
-    @Autowired
-    private ZombiesGameDataRepository gameDataRepository;
-//endregion
+    private ZombiesEntityManagerHelper entityManager;
     private ZombiesMap theMap;
 
     private <B extends IZombiesGameBroker> ZombiesGameEngine(
@@ -189,8 +178,7 @@ public class ZombiesGameEngine {
     }
 
     public void runGame() {
-        assert mapRepository != null;
-        assert mapTileRepository != null;
+        assert entityManager != null;
 
         if(!theGame.isPopulated()) {
             throw new IllegalStateException("The game (id="+theGame.getId()+") is not initialized!");
@@ -199,7 +187,7 @@ public class ZombiesGameEngine {
             throw new IllegalStateException("The game's (id="+theGame.getId()+") engine (id="+gameEngineId+") is already running!)");
         }
 
-        theMap = mapRepository.findById(theGame.getMapId()).orElseThrow();
+        theMap = entityManager.findById(theGame.getMapId(), ZombiesMap.class).orElseThrow();
         //----- Wait until all of the players have connected to the web-socket
         try {
             waitForPlayersToConnect();
@@ -261,8 +249,9 @@ public class ZombiesGameEngine {
                     broadcastUpdateMessage(createUpdateMessage(DISCARD_CARDS));
                     resolveEventCardDiscards(playerId);
                 }
-
-                gameDataRepository.save(playerData);
+                // TODO: Do I need to do this?
+                entityManager.update(playerData);
+                entityManager.update(theGame);
             }
         }
     }
@@ -443,7 +432,7 @@ public class ZombiesGameEngine {
 
             var mapTileId = theMap.getMapTileId(destination);
             assert mapTileId != null;
-            var mapTile = mapTileRepository.findById(mapTileId).orElseThrow();
+            var mapTile = entityManager.findById(mapTileId, ZombiesMapTile.class).orElseThrow();
             if(mapTile.getSquareType(destination) != ZombiesTile.SquareType.IMPASSABLE) {
                 LOGGER.trace("Moving player (" + playerId + "): (" + data.getLocation() + ") -> (" + destination + ")");
                 data.setLocation(destination);
@@ -505,7 +494,7 @@ public class ZombiesGameEngine {
                 var destination = getDestination(zombieLocation, direction);
                 var mapTileId = theMap.getMapTileId(destination);
                 if(mapTileId != null) {
-                    var mapTile = mapTileRepository.findById(mapTileId).orElseThrow();
+                    var mapTile = entityManager.findById(mapTileId, ZombiesMapTile.class).orElseThrow();
                     //----- This zombie can move to the destination iff the destination is not impassable, and...
                     if(mapTile.getSquareType(destination) != ZombiesTile.SquareType.IMPASSABLE
                             //----- there is not already a zombie there
