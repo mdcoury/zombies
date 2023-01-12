@@ -18,7 +18,8 @@ public class ZombiesGameUpdateMessage implements IZombiesWsMessage {
         COMBAT,
         DRAW_CARDS,
         MOVEMENT,
-        ZOMBIES
+        ZOMBIES,
+        DISCARD_CARDS
     }
     private final UUID messageId = UUID.randomUUID();
     private final Type type = Type.UPDATE;

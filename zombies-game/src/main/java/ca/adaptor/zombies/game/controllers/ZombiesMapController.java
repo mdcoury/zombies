@@ -15,7 +15,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Random;
 import java.util.UUID;
 
@@ -41,9 +40,10 @@ public class ZombiesMapController {
 
     @NotNull
     ZombiesMap createMap() {
+        LOGGER.trace("Creating new map...");
         var map = ZombiesMapGenerator.create(tileRepository, mapTileRepository, autowireFactory, rng);
         map = mapRepository.saveAndFlush(map);
-        LOGGER.debug("Created new map: " + map);
+        LOGGER.debug("Created map: " + map.getId());
         return map;
     }
 
@@ -52,19 +52,14 @@ public class ZombiesMapController {
         return ResponseEntity.ok(createMap().getId());
     }
 
-    @GetMapping
-    public ResponseEntity<List<UUID>> getAllIds() {
-        var retOpt = mapRepository.findAllIds();
-        LOGGER.debug("Retrieving all map-IDs... found " + retOpt.map(List::size).orElse(0));
-        return retOpt.map(ResponseEntity::ok)
-                .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
-    }
-
     @GetMapping(path = "{mapId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ZombiesMap> getMap(@PathVariable UUID mapId) {
         var mapOpt = mapRepository.findById(mapId);
-        LOGGER.debug("Retrieving map: " + mapOpt);
-        return mapOpt.map(ResponseEntity::ok)
-                .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
+        if(mapOpt.isPresent()) {
+            var map = mapOpt.get();
+            LOGGER.debug("Retrieving map: " + map.getId());
+            return ResponseEntity.ok(map);
+        }
+        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
 }

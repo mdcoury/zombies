@@ -5,7 +5,6 @@ import ca.adaptor.zombies.game.engine.ZombiesGameEngine;
 import ca.adaptor.zombies.game.model.ZombiesGame;
 import ca.adaptor.zombies.game.model.ZombiesGameData;
 import ca.adaptor.zombies.game.repositories.*;
-import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,26 +50,22 @@ public class ZombiesGameController {
     /** @return the {@link UUID} of the created {@link ZombiesGame} */
     @PostMapping
     public ResponseEntity<UUID> create() {
+        LOGGER.trace("Creating new game...");
         var map = mapController.createMap();
         var game = gameRepository.saveAndFlush(new ZombiesGame(map.getId()));
         LOGGER.debug("Created game: " + game.getId());
         return ResponseEntity.ok(game.getId());
     }
 
-    @GetMapping
-    public ResponseEntity<List<UUID>> getAllIds() {
-        var retOpt = gameRepository.findAllIds();
-        LOGGER.debug("Retrieving all game-IDs... found " + retOpt.map(List::size).orElse(0));
-        return retOpt.map(ResponseEntity::ok)
-                .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
-    }
-
     @GetMapping(path = "{gameId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ZombiesGame> getGame(@PathVariable UUID gameId) {
         var gameOpt = gameRepository.findById(gameId);
-        LOGGER.debug("Retrieving game: " + gameOpt);
-        return gameOpt.map(ResponseEntity::ok)
-                .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
+        if(gameOpt.isPresent()) {
+            var game = gameOpt.get();
+            LOGGER.debug("Retrieving game: " + game.getId());
+            return ResponseEntity.ok(game);
+        }
+        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
 
     /** @return the {@link UUID} of the player's {@link ZombiesGameData} */

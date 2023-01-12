@@ -71,7 +71,7 @@ public class ZombiesTileImporter implements CommandLineRunner {
 
             if(!tileRepository.existsByName(tile.getName())) {
                 tile = tileRepository.save(tile);
-                LOGGER.trace("Created tile: " + tile);
+//                LOGGER.trace("Created tile: " + tile);
             }
         }
     }

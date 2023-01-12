@@ -35,7 +35,7 @@ public class ZombiesMapGenerator {
         for(var tile : deck) {
             placeTile(tile, ret, exits, mapTileRepository, rng);
         }
-
+//        LOGGER.trace(ret.dump());
         return ret;
     }
 
@@ -48,6 +48,7 @@ public class ZombiesMapGenerator {
     ) {
         if(exits.size() == 0) {
             if(tile.getName().equals(ZombiesTile.TOWN_SQUARE)) {
+                // TODO: Do the math so this is centred at (0,0)
                 var topLeft = new ZombiesCoordinate(90,90);
                 var mapTile = new ZombiesMapTile(tile, topLeft, ZombiesMapTile.TileRotation.ROT_0);
                 mapTile = mapTileRepository.save(mapTile);
@@ -86,7 +87,7 @@ public class ZombiesMapGenerator {
                     //      happen) and all of the new tile's exits align either with an existing exit or are open
                     var mapTile = new ZombiesMapTile(tile, targetTopLeft, rotation);
                     if(checkValidPlacement(targetTopLeft, mapTile, map, mapTileRepository)) {
-                        mapTile = mapTileRepository.saveAndFlush(mapTile);
+                        mapTile = mapTileRepository.save(mapTile);
                         var added = map.add(mapTile);
                         if(added) {
                             //----- Remove the exit we aligned to

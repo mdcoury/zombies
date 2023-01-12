@@ -27,9 +27,12 @@ public class ZombiesMapTileController {
     @GetMapping(path = "{mapTileId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ZombiesMapTile> getMapTile(@PathVariable UUID mapTileId) {
         var mapTileOpt = mapTileRepository.findById(mapTileId);
-        LOGGER.debug("Retrieving map-tile: " + mapTileOpt);
-        return mapTileOpt.map(ResponseEntity::ok)
-                .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
+        if(mapTileOpt.isPresent()) {
+            var mapTile = mapTileOpt.get();
+            LOGGER.debug("Retrieving map-tile: " + mapTile.getId());
+            return ResponseEntity.ok(mapTile);
+        }
+        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
 
 }

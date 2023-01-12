@@ -11,8 +11,6 @@ import java.util.UUID;
 
 import static ca.adaptor.zombies.game.messages.IZombiesWsMessage.*;
 
-@ToString
-@EqualsAndHashCode
 @JsonIgnoreProperties(ignoreUnknown = true, allowGetters = true, allowSetters = true)
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME)
 @JsonSubTypes({
@@ -23,15 +21,21 @@ import static ca.adaptor.zombies.game.messages.IZombiesWsMessage.*;
         @JsonSubTypes.Type(value = AbstractZombiesWsMessage.RequestMovement.class, name = REQUEST_MOVEMENT),
         @JsonSubTypes.Type(value = AbstractZombiesWsMessage.RequestDiscards.class, name = REQUEST_DISCARDS),
 })
+@ToString
+@EqualsAndHashCode
 public abstract class AbstractZombiesWsMessage implements IZombiesWsMessage {
     @Getter @Setter
     private UUID messageId = UUID.randomUUID();
 
+    @ToString(callSuper = true)
+    @EqualsAndHashCode(callSuper = true)
     public static abstract class AbstractRequestMessage extends AbstractZombiesWsMessage {
         @Getter @Setter
         private Type type = Type.REQUEST;
     }
 
+    @ToString(callSuper = true)
+    @EqualsAndHashCode(callSuper = true)
     @NoArgsConstructor
     public static class Hello extends AbstractZombiesWsMessage {
         @Getter @Setter
@@ -42,6 +46,8 @@ public abstract class AbstractZombiesWsMessage implements IZombiesWsMessage {
         private Type type = Type.HELLO;
     }
 
+    @ToString(callSuper = true)
+    @EqualsAndHashCode(callSuper = true)
     @NoArgsConstructor
     public static class Goodbye extends AbstractZombiesWsMessage {
         @Getter @Setter
@@ -51,20 +57,28 @@ public abstract class AbstractZombiesWsMessage implements IZombiesWsMessage {
         @Getter @Setter
         private Type type = Type.BYE;
     }
+    @ToString(callSuper = true)
+    @EqualsAndHashCode(callSuper = true)
     @NoArgsConstructor
     public static class RequestRoll extends AbstractRequestMessage {
 
     }
+    @ToString(callSuper = true)
+    @EqualsAndHashCode(callSuper = true)
     @NoArgsConstructor
     public static class RequestUseBullets extends AbstractRequestMessage {
         @Getter @Setter
         private boolean usingBullets;
     }
+    @ToString(callSuper = true)
+    @EqualsAndHashCode(callSuper = true)
     @NoArgsConstructor
     public static class RequestMovement extends AbstractRequestMessage {
         @Getter @Setter
         private ZombiesDirection direction;
     }
+    @ToString(callSuper = true)
+    @EqualsAndHashCode(callSuper = true)
     @NoArgsConstructor
     public static class RequestDiscards extends AbstractRequestMessage {
         @Getter @Setter

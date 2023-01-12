@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
 
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -50,30 +51,35 @@ public class ZombiesMap {
             @AttributeOverride(name = COLUMN_Y, column = @Column(name = COLUMN_HELIPAD_Y)),
     })
     private ZombiesCoordinate helipadLocation;
+    @Getter
+    @Column
+    private int minx = Integer.MAX_VALUE;
+    @Getter
+    @Column
+    private int miny = Integer.MAX_VALUE;
 
     @Transient @Autowired
     private ZombiesMapTileRepository mapTileRepository;
 
-    public void autowire(
-            @NotNull AutowireCapableBeanFactory autowireFactory
-    ) {
+    public void autowire(@NotNull AutowireCapableBeanFactory autowireFactory) {
         autowireFactory.autowireBean(this);
     }
 
     public boolean add(@NotNull ZombiesMapTile mapTile) {
         assert mapTile.getId() != null;
 
-        if(!mapTileIds.containsKey(mapTile.getTopLeft())) {
-            mapTileIds.put(mapTile.getTopLeft(), mapTile.getId());
-            LOGGER.trace("[map=" + getId() + "] Placed " + mapTile);
+        var topLeft = mapTile.getTopLeft();
+        if(!mapTileIds.containsKey(topLeft)) {
+            mapTileIds.put(topLeft, mapTile.getId());
+            minx = Math.min(minx, topLeft.getX());
+            miny = Math.min(miny, topLeft.getY());
 
-            var tile = mapTile.getTile();
-            if (tile.getName().equals(ZombiesTile.TOWN_SQUARE)) {
+            if (mapTile.isTownSquare()) {
                 assert townSquareLocation == null;
-                townSquareLocation = new ZombiesCoordinate(mapTile.getTopLeft().getX() + 1, mapTile.getTopLeft().getY() + 1);
-            } else if (tile.getName().equals(ZombiesTile.HELIPAD)) {
+                townSquareLocation = new ZombiesCoordinate(topLeft.getX() + 1, topLeft.getY() + 1);
+            } else if (mapTile.isHelipad()) {
                 assert helipadLocation == null;
-                helipadLocation = new ZombiesCoordinate(mapTile.getTopLeft().getX() + 1, mapTile.getTopLeft().getY() + 1);
+                helipadLocation = new ZombiesCoordinate(topLeft.getX() + 1, topLeft.getY() + 1);
             }
             return true;
         }

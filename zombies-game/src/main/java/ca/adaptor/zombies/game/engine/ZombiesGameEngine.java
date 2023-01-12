@@ -232,6 +232,7 @@ public class ZombiesGameEngine {
                 //  3. Draw back up to three event cards, if you have less than three.
                 var eventCardIds = playerData.getEventCardIds();
                 while(eventCardIds.size() < MAX_NUM_EVENT_CARDS) {
+                    broadcastUpdateMessage(createUpdateMessage(DRAW_CARDS));
                     LOGGER.debug("Drawing card... (Game=" + theGame.getId() + ", Engine=" + gameEngineId + ", Player=" + playerId + ",Turn=" + theGame.getTurn() + ")");
                     eventCardIds.add(drawCard());
                 }
@@ -242,6 +243,7 @@ public class ZombiesGameEngine {
                 //  5. Move up to the number of spaces indicated by the movement roll. You must stop
                 //     and combat on any space occupied by a zombie. You may continue your movement
                 //     after defeating a zombie up to your movement total.
+                broadcastUpdateMessage(createUpdateMessage(MOVEMENT));
                 resolveMovement(playerId);
                 if(playerData.isPlayerDead()) {
                     //----- reset the player and then continue
@@ -251,13 +253,16 @@ public class ZombiesGameEngine {
                 }
                 //  6. After moving, roll a six-sided die. You must move that number of zombies,
                 //     one space each, if able.
+                broadcastUpdateMessage(createUpdateMessage(ZOMBIES));
                 resolveZombieMovement(playerId);
                 //  7. At the end of the turn, you may discard one event card from your hand.
                 //     Play then proceeds clockwise around the table
-                resolveEventCardDiscards(playerId);
+                if(playerData.getEventCardIds().size() > 0) {
+                    broadcastUpdateMessage(createUpdateMessage(DISCARD_CARDS));
+                    resolveEventCardDiscards(playerId);
+                }
 
                 gameDataRepository.save(playerData);
-                gameRepository.save(theGame);
             }
         }
     }
@@ -269,7 +274,7 @@ public class ZombiesGameEngine {
         }
         // TODO: Add timeout
         latch.await();
-        LOGGER.trace("All players have connected");
+        LOGGER.trace("All players have connected to game (engine-id="+gameEngineId+")");
     }
 
     private void resetPlayer(@NotNull UUID playerId) {
@@ -277,7 +282,7 @@ public class ZombiesGameEngine {
     }
 
     private int rollD6() {
-        var ret = rng.nextInt(6);
+        var ret = rng.nextInt(6) + 1;
         LOGGER.trace("Rolled D6: " + ret);
         return ret;
     }
@@ -310,6 +315,7 @@ public class ZombiesGameEngine {
      *      three life and three bullet tokens.
      */
     private void resolveCombat(@NotNull UUID playerId) {
+        broadcastUpdateMessage(createUpdateMessage(COMBAT));
         var data = theGame.getPlayerData(playerId);
         var location = data.getLocation();
 
@@ -352,6 +358,9 @@ public class ZombiesGameEngine {
             ret = false;
             assert theGame.getZombieLocations().contains(data.getLocation());
             theGame.getZombieLocations().remove(data.getLocation());
+            if(combatUpdate.getZombieKills() == null) {
+                combatUpdate.setZombieKills(new HashSet<>());
+            }
             combatUpdate.getZombieKills().add(data.getLocation());
         }
         else {
@@ -413,10 +422,10 @@ public class ZombiesGameEngine {
      */
     private void resolveMovement(@NotNull UUID playerId) {
         LOGGER.trace("Resolving movement... (Game=" + theGame.getId() + ", Engine=" + gameEngineId + ", Player=" + playerId + ",Turn=" + theGame.getTurn() + ")");
-        var location = theGame.getPlayerData(playerId).getLocation();
 
         var broker = theBrokersByPlayerId.get(playerId);
         int roll = requastRoll(broker, MOVEMENT);
+        var data = theGame.getPlayerData(playerId);
 
         for(int i = 0; i < roll; i++) {
             var direction = broker.requestPlayerMovement();
@@ -427,8 +436,7 @@ public class ZombiesGameEngine {
                 break;
             }
 
-            var destination = getDestination(location, direction);
-            var data = theGame.getPlayerData(playerId);
+            var destination = getDestination(data.getLocation(), direction);
 
             var update = createUpdateMessage(MOVEMENT);
             update.setPlayerData(data);
@@ -463,6 +471,8 @@ public class ZombiesGameEngine {
                 LOGGER.trace("Player has attempted an invalid move. Allowing them to try again...");
                 i--;
             }
+            // TODO: Probably don't always want to braodcast this, eg PvP
+            broadcastUpdateMessage(update);
         }
     }
 
@@ -479,6 +489,7 @@ public class ZombiesGameEngine {
         LOGGER.trace("Resolving zombie movement... (Game=" + theGame.getId() + ", Engine=" + gameEngineId + ", Player=" + playerId + ",Turn=" + theGame.getTurn() + ")");
 
         var update = createUpdateMessage(ZOMBIES);
+        update.setZombieMovements(new HashMap<>());
 
         var zombieLocations = new ArrayList<>(theGame.getZombieLocations());
         Collections.shuffle(zombieLocations, rng);
@@ -493,21 +504,22 @@ public class ZombiesGameEngine {
             for(var direction : directions) {
                 var destination = getDestination(zombieLocation, direction);
                 var mapTileId = theMap.getMapTileId(destination);
-                assert mapTileId != null;
-                var mapTile = mapTileRepository.findById(mapTileId).orElseThrow();
-                //----- This zombie can move to the destination iff the destination is not impassable, and...
-                if(mapTile.getSquareType(destination) != ZombiesTile.SquareType.IMPASSABLE
-                        //----- there is not already a zombie there
-                        && !theGame.getZombieLocations().contains(destination)
-                ) {
-                    zombieMoved = true;
-                    numZombiesToMove--;
-                    LOGGER.trace("Moving zombie: ("+zombieLocation+") -> ("+destination+")");
-                    // TODO: This is clunky...
-                    theGame.getZombieLocations().remove(zombieLocation);
-                    theGame.getZombieLocations().add(destination);
-                    update.getZombieMovements().put(zombieLocation, destination);
-                    break;
+                if(mapTileId != null) {
+                    var mapTile = mapTileRepository.findById(mapTileId).orElseThrow();
+                    //----- This zombie can move to the destination iff the destination is not impassable, and...
+                    if(mapTile.getSquareType(destination) != ZombiesTile.SquareType.IMPASSABLE
+                            //----- there is not already a zombie there
+                            && !theGame.getZombieLocations().contains(destination)
+                    ) {
+                        zombieMoved = true;
+                        numZombiesToMove--;
+                        LOGGER.trace("Moving zombie: ("+zombieLocation+") -> ("+destination+")");
+                        // TODO: This is clunky...
+                        theGame.getZombieLocations().remove(zombieLocation);
+                        theGame.getZombieLocations().add(destination);
+                        update.getZombieMovements().put(zombieLocation, destination);
+                        break;
+                    }
                 }
             }
 

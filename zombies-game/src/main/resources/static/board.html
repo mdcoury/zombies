@@ -5,9 +5,53 @@
     <script src="https://code.jquery.com/jquery-3.6.3.min.js"></script>
     <script src="js/zombies_api.js"></script>
     <script src="js/zombies_game.js"></script>
-    <title>Zombies!!!</title>
+    <title>Zombies!!! (Game)</title>
 </head>
 <body onload="connect()">
+    <table>
+        <tr>
+            <td width="600"><p id="gameTurnInf"></p></td>
+            <td width="600"><p id="rollInf"></p></td>
+        </tr>
+        <tr>
+            <td height="100" width="200">
+                <div id="rollDiceDiv" style="display:none" data-message="">
+                    <button id="rollDiceButton" onclick="rollDice();">Roll</button>
+                </div>
+                <div id="useBulletsDiv" style="display:none" data-message="">
+                    <label>Use Bullets?</label>
+                    <button id="yesButton" onclick="useBullets('true');">Yes</button>
+                    <button id="noButton" onclick="useBullets('false');">No</button>
+                </div>
+                <div id="moveDiv" style="display:none" data-message="">
+                    <label>Move:</label>
+                    <table>
+                        <tr>
+                            <td> </td>
+                            <td><button id="northButton" onclick="move('NORTH');">N</button></td>
+                            <td> </td>
+                        </tr>
+                        <tr>
+                            <td><button id="westButton" onclick="move('WEST');">W</button></td>
+                            <td><button id="stayButton" onclick="move(null);">•</button></td>
+                            <td><button id="eastButton" onclick="move('EAST');">E</button></td>
+                        </tr>
+                        <tr>
+                            <td></td>
+                            <td><button id="southButton" onclick="move('SOUTH');">S</button></td>
+                            <td></td>
+                        </tr>
+                    </table>
+                </div>
+            </td>
+            <td><p id="playerDataInf"></p></td>
+        </tr>
+    </table>
+
     <canvas id="gameCanvas"></canvas>
+    <br/>
+    <p id="updateInf"></p>
+    <p id="uuidInf"></p>
+    <p id="socketInf"></p>
 </body>
 </html>

@@ -13,7 +13,7 @@ public interface IZombiesWsMessage {
     String REQUEST_DISCARDS = "RequestDiscards";
 
     enum Type {
-        HELLO, REQUEST, UPDATE, BYE
+        HELLO, REQUEST, REPLY, UPDATE, BYE
     }
 
     @NotNull UUID getMessageId();

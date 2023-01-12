@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static ca.adaptor.zombies.game.model.ZombiesModelConstants.*;
 import static ca.adaptor.zombies.game.model.ZombiesTile.TILE_SIZE;
@@ -46,7 +47,7 @@ public class ZombiesGame {
     private Set<ZombiesCoordinate> zombieLocations = new HashSet<>();
     /** Maps a player-id to a game-data-id */
     @ElementCollection(fetch = FetchType.EAGER)
-    private Map<UUID, UUID> playerDataIds = new HashMap<>();
+    private Map<UUID, UUID> playerDataIds = new ConcurrentHashMap<>();
     @Getter
     @ElementCollection(fetch = FetchType.EAGER)
     private Set<UUID> playerIds = new HashSet<>();
@@ -71,7 +72,7 @@ public class ZombiesGame {
     private ZombiesMapTileRepository mapTileRepository;
 
     @Transient
-    private final Map<UUID, ZombiesGameData> gameData = new HashMap<>();
+    private final Map<UUID, ZombiesGameData> gameDataCache = new HashMap<>();
     @Transient
     private ZombiesMap theMap;
 
@@ -86,11 +87,11 @@ public class ZombiesGame {
 
     @NotNull
     public ZombiesGameData getPlayerData(@NotNull UUID playerId) {
-        if(!gameData.containsKey(playerId)) {
+        if(!gameDataCache.containsKey(playerId)) {
             var playerData = gameDataRepository.findById(playerDataIds.get(playerId)).orElseThrow();
-            gameData.put(playerId, playerData);
+            gameDataCache.put(playerId, playerData);
         }
-        return gameData.get(playerId);
+        return gameDataCache.get(playerId);
     }
 
     public void incrementTurn() { turn++; }
@@ -121,20 +122,18 @@ public class ZombiesGame {
         var map = getMap();
         LOGGER.trace("[game=" + getId() + "] Populating map (" + mapId + ")...");
         //----- Go through all of the map-tiles and place its items
-        for(var mapTileId : map.getMapTileIds().values()) {
-            var mapTile = mapTileRepository.findById(mapTileId).orElseThrow();
-            var tile = mapTile.getTile();
-
+        var mapTiles = mapTileRepository.findAllById(map.getMapTileIds().values());
+        for(var mapTile : mapTiles) {
             //----- The town-square starts with _no_ zombies...
-            if(!tile.getName().equals(ZombiesTile.TOWN_SQUARE)) {
+            if(!mapTile.isTownSquare()) {
                 //----- See if it's a building...
-                if (tile.isBuilding()) {
+                if (mapTile.isBuilding()) {
                     //----- If it is, then it will have bullets and/or life and/or zombies, which should get placed into
                     //      the building
                     populateBuilding(mapTile);
-                } else if (tile.getName().equals(ZombiesTile.HELIPAD)) {
+                } else if (mapTile.isHelipad()) {
                     //----- The helipad starts with a zombie on every square
-                    for (int i = 0; i < tile.getNumZombies(); i++) {
+                    for (int i = 0; i < mapTile.getNumZombies(); i++) {
                         zombieLocations.add(new ZombiesCoordinate(
                                 mapTile.getTopLeft().getX() + (i % TILE_SIZE),
                                 mapTile.getTopLeft().getY() + (i / TILE_SIZE)
@@ -152,10 +151,8 @@ public class ZombiesGame {
     private void populateStreet(@NotNull ZombiesMapTile mapTile) {
         assert populated;
 
-        LOGGER.trace("[game=" + getId() + "] Populating street: " + mapTile.getTile().getName());
-
-        var tile = mapTile.getTile();
-        var exits = tile.getExits();
+        // TODO: These need to be rotated!!
+        var exits = mapTile.getExits();
         for(var exit : exits) {
             switch(exit) {
                 case NORTH -> zombieLocations.add(new ZombiesCoordinate(
@@ -181,15 +178,13 @@ public class ZombiesGame {
     private void populateBuilding(@NotNull ZombiesMapTile mapTile) {
         assert populated;
 
-        LOGGER.trace("[game=" + getId() + "] Populating building: " + mapTile.getTile().getName());
-
-        var tile = mapTile.getTile();
-        var buildingSquares = tile.getBuildingSquares();
+        // TODO: These need to be rotated!!
+        var buildingSquares = mapTile.getBuildingSquares();
         Collections.shuffle(buildingSquares);
 
-        int nb = tile.getNumBullets();
-        int nl = tile.getNumLife();
-        int nz = tile.getNumZombies();
+        int nb = mapTile.getNumBullets();
+        int nl = mapTile.getNumLife();
+        int nz = mapTile.getNumZombies();
 
         for(var buildingSquare : buildingSquares) {
             if(nz > 0) {
@@ -199,7 +194,7 @@ public class ZombiesGame {
                 ));
                 nz -= 1;
             }
-
+            //----- A tile can have either a bullet or a life, not both
             if (nb > 0) {
                 bulletLocations.add(new ZombiesCoordinate(
                         mapTile.getTopLeft().getX() + buildingSquare.getX(),
@@ -213,9 +208,6 @@ public class ZombiesGame {
                         mapTile.getTopLeft().getY() + buildingSquare.getY()
                 ));
                 nl -= 1;
-            }
-            else {
-                break;
             }
         }
     }
