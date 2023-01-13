@@ -15,9 +15,10 @@ import static ca.adaptor.zombies.game.model.ZombiesModelConstants.TABLE_PLAYER;
 @ToString
 @Entity(name = TABLE_PLAYER)
 @Table(name = TABLE_PLAYER)
-public class ZombiesPlayer {
+public class ZombiesPlayer implements IZombieModelObject {
     @Id
     @GeneratedValue
     @Column(name = COLUMN_PLAYER_ID, updatable = false, nullable = false)
     private UUID id;
+
 }

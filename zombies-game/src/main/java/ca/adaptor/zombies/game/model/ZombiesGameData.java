@@ -16,7 +16,7 @@ import static ca.adaptor.zombies.game.model.ZombiesModelConstants.*;
 @Getter
 @Entity(name = TABLE_GAME_DATA)
 @Table(name = TABLE_GAME_DATA)
-public class ZombiesGameData {
+public class ZombiesGameData implements IZombieModelObject {
     public static final int MAX_LIFE = 5;
 
     @Id
@@ -58,4 +58,5 @@ public class ZombiesGameData {
         }
         return false;
     }
+
 }

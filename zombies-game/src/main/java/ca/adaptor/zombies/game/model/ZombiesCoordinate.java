@@ -17,6 +17,7 @@ public class ZombiesCoordinate {
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private int x;
     private int y;
+
     @Override
     public String toString() {
         try {

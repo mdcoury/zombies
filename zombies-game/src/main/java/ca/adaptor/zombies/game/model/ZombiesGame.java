@@ -21,7 +21,7 @@ import static ca.adaptor.zombies.game.model.ZombiesTile.TILE_SIZE;
 @ToString
 @Entity(name = TABLE_GAME)
 @Table(name = TABLE_GAME)
-public class ZombiesGame {
+public class ZombiesGame implements IZombieModelObject {
     private static final Logger LOGGER = LoggerFactory.getLogger(ZombiesGame.class);
 
     private static final int MIN_PLAYERS = 1;
@@ -250,4 +250,5 @@ public class ZombiesGame {
         populateMap();
         return true;
     }
+
 }

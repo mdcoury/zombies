@@ -23,7 +23,7 @@ import static ca.adaptor.zombies.game.model.ZombiesModelConstants.*;
                 @Index(name = INDEX_TILE_NAME, columnList = COLUMN_TILE_NAME)
         }
 )
-public class ZombiesTile {
+public class ZombiesTile implements IZombieModelObject {
     public static final int NUM_SIDES = 4;
     public static final int TILE_SIZE = 3;
 
@@ -53,7 +53,7 @@ public class ZombiesTile {
     private int numLife;
     @Column(name = COLUMN_TILE_NUM_BULLETS, updatable = false, nullable = false)
     private int numBullets;
-    @Column(name = COLUMN_TILE_NAME, updatable = false, nullable = false)
+    @Column(name = COLUMN_TILE_NAME, updatable = false, nullable = false, unique = true)
     private String name;
 
     @NotNull

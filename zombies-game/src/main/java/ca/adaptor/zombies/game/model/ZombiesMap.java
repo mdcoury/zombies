@@ -25,7 +25,7 @@ import static ca.adaptor.zombies.game.model.ZombiesTile.TILE_SIZE;
 @ToString
 @Entity(name = TABLE_MAP)
 @Table(name = TABLE_MAP)
-public class ZombiesMap {
+public class ZombiesMap implements IZombieModelObject {
     private static final Logger LOGGER = LoggerFactory.getLogger(ZombiesMap.class);
 
     @Getter
@@ -147,4 +147,5 @@ public class ZombiesMap {
 
         return ret.toString();
     }
+
 }

@@ -9,14 +9,14 @@ public class ZombiesModelConstants {
     public static final String TABLE_PLAYER                                                     = "player";
     public static final String TABLE_TILE                                                       = "tile";
 
-    public static final String COLUMN_MAP_ID                                                    = "map_id";
-    public static final String COLUMN_MAP_TILE_ID                                               = "map_tile_id";
-    public static final String COLUMN_TILE_ID                                                   = "tile_id";
-    public static final String COLUMN_GAME_ID                                                   = "game_id";
-    public static final String COLUMN_GAME_PLAYER_IDS                                           = "player_ids";
-    public static final String COLUMN_GAME_DATA_ID                                              = "data_id";
-    public static final String COLUMN_PLAYER_ID                                                 = "player_id";
-    public static final String COLUMN_EVENT_CARD_ID                                             = "event_card_id";
+    public static final String COLUMN_ID                                                       = "_id";
+    public static final String COLUMN_MAP_ID                                                    = TABLE_MAP + COLUMN_ID;
+    public static final String COLUMN_MAP_TILE_ID                                               = TABLE_MAP_TILE + COLUMN_ID;
+    public static final String COLUMN_TILE_ID                                                   = TABLE_TILE + COLUMN_ID;
+    public static final String COLUMN_GAME_ID                                                   = TABLE_GAME + COLUMN_ID;
+    public static final String COLUMN_GAME_DATA_ID                                              = TABLE_GAME_DATA + COLUMN_ID;
+    public static final String COLUMN_PLAYER_ID                                                 = TABLE_PLAYER + COLUMN_ID;
+    public static final String COLUMN_EVENT_CARD_ID                                             = TABLE_EVENT_CARD + COLUMN_ID;
 
     public static final String COLUMN_MAP_MAP_TILES                                             = "map_map_tiles";
 

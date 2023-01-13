@@ -21,7 +21,7 @@ import static org.hibernate.annotations.CascadeType.SAVE_UPDATE;
 @ToString
 @Entity(name = TABLE_MAP_TILE)
 @Table(name = TABLE_MAP_TILE)
-public class ZombiesMapTile {
+public class ZombiesMapTile implements IZombieModelObject {
     public enum TileRotation {
         ROT_0, ROT_90, ROT_180, ROT_270
     }

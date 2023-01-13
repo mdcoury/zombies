@@ -16,10 +16,11 @@ import static ca.adaptor.zombies.game.model.ZombiesModelConstants.TABLE_EVENT_CA
 @ToString
 @Entity(name = TABLE_EVENT_CARD)
 @Table(name = TABLE_EVENT_CARD)
-public class ZombiesEventCard {
+public class ZombiesEventCard implements IZombieModelObject {
     @Getter
     @Id
     @GeneratedValue
     @Column(name = COLUMN_EVENT_CARD_ID, updatable = false, nullable = false)
     private UUID id;
+
 }
