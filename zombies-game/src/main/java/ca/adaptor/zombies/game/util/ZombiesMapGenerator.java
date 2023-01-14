@@ -28,7 +28,7 @@ public class ZombiesMapGenerator {
         var deck = shuffleTiles(entityManager, rng);
 
         var exits = new ArrayList<ZombiesCoordinate>();
-        placeTile(entityManager.findByName(ZombiesTile.TOWN_SQUARE, ZombiesTile.class).orElseThrow(),
+        placeTile(entityManager.findTileByName(ZombiesTile.TOWN_SQUARE).orElseThrow(),
                 ret, exits, entityManager, rng);
         for(var tile : deck) {
             placeTile(tile, ret, exits, entityManager, rng);
@@ -191,9 +191,9 @@ public class ZombiesMapGenerator {
         // TODO: Create query to load all the tiles /but/ town square and helipad
         var ret = entityManager.findAll(ZombiesTile.class);
 
-        var townSquare = entityManager.findByName(ZombiesTile.TOWN_SQUARE, ZombiesTile.class).orElseThrow();
+        var townSquare = entityManager.findTileByName(ZombiesTile.TOWN_SQUARE).orElseThrow();
         ret.remove(townSquare);
-        var helipad = entityManager.findByName(ZombiesTile.HELIPAD, ZombiesTile.class).orElseThrow();
+        var helipad = entityManager.findTileByName(ZombiesTile.HELIPAD).orElseThrow();
         ret.remove(helipad);
 
         Collections.shuffle(ret, rng);

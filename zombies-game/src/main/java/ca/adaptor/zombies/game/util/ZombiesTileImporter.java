@@ -49,7 +49,6 @@ public class ZombiesTileImporter implements CommandLineRunner {
         if(!line.isEmpty() && !line.startsWith("#")) {
             var st = new StringTokenizer(line, ",", false);
             var tile = new ZombiesTile(
-                    UUID.randomUUID(),
                     new ZombiesTile.SquareType[] {
                             ZombiesTile.SquareType.values()[Integer.parseInt(st.nextToken())],
                             ZombiesTile.SquareType.values()[Integer.parseInt(st.nextToken())],
@@ -67,9 +66,8 @@ public class ZombiesTileImporter implements CommandLineRunner {
                     st.nextToken()
             );
 
-            if(!entityManager.existsByName(tile.getName(), ZombiesTile.class)) {
+            if(entityManager.findTileByName(tile.getName()).isEmpty()) {
                 tile = entityManager.save(tile);
-//                LOGGER.trace("Created tile: " + tile);
             }
         }
     }

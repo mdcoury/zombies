@@ -8,7 +8,7 @@ import lombok.ToString;
 
 import java.util.UUID;
 
-import static ca.adaptor.zombies.game.model.ZombiesModelConstants.COLUMN_EVENT_CARD_ID;
+import static ca.adaptor.zombies.game.model.ZombiesModelConstants.COLUMN_ID;
 import static ca.adaptor.zombies.game.model.ZombiesModelConstants.TABLE_EVENT_CARD;
 
 @NoArgsConstructor
@@ -20,7 +20,7 @@ public class ZombiesEventCard implements IZombieModelObject {
     @Getter
     @Id
     @GeneratedValue
-    @Column(name = COLUMN_EVENT_CARD_ID, updatable = false, nullable = false)
+    @Column(name = COLUMN_ID, updatable = false, nullable = false)
     private UUID id;
 
 }

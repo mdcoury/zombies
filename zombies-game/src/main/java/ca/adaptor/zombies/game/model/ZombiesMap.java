@@ -31,7 +31,7 @@ public class ZombiesMap implements IZombieModelObject {
     @Getter
     @Id
     @GeneratedValue
-    @Column(name = COLUMN_MAP_ID, updatable = false, nullable = false)
+    @Column(name = COLUMN_ID, updatable = false, nullable = false)
     private UUID id;
     @Getter
     @ElementCollection(fetch = FetchType.EAGER)

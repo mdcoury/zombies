@@ -212,7 +212,6 @@ public class ZombiesGameEngine {
                     resolveCombat(playerId);
                     if(playerData.isPlayerDead()) {
                         //----- reset the player and then continue
-                        LOGGER.trace("Player (" + playerId + ") has died!");
                         resetPlayer(playerId);
                         continue;
                     }
@@ -235,7 +234,6 @@ public class ZombiesGameEngine {
                 resolveMovement(playerId);
                 if(playerData.isPlayerDead()) {
                     //----- reset the player and then continue
-                    LOGGER.trace("Player (" + playerId + ") has died!");
                     resetPlayer(playerId);
                     continue;
                 }
@@ -249,9 +247,7 @@ public class ZombiesGameEngine {
                     broadcastUpdateMessage(createUpdateMessage(DISCARD_CARDS));
                     resolveEventCardDiscards(playerId);
                 }
-                // TODO: Do I need to do this?
-                entityManager.update(playerData);
-                entityManager.update(theGame);
+                // TODO: Should verify that the game-state is being updated in the DB
             }
         }
     }

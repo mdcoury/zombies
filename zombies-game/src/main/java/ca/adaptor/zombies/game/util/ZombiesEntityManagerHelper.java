@@ -5,9 +5,8 @@ import ca.adaptor.zombies.game.model.ZombiesTile;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Table;
+import jakarta.transaction.Transactional;
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;
@@ -16,28 +15,19 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static ca.adaptor.zombies.game.model.ZombiesModelConstants.COLUMN_ID;
-import static ca.adaptor.zombies.game.model.ZombiesModelConstants.COLUMN_TILE_NAME;
+import static ca.adaptor.zombies.game.model.ZombiesModelConstants.COLUMN_NAME;
+import static ca.adaptor.zombies.game.util.ZombiesQueryConstants.QUERY_FIND_TILE_BY_NAME;
 
 @Component
 public class ZombiesEntityManagerHelper {
-    private static final Logger LOGGER = LoggerFactory.getLogger(ZombiesEntityManagerHelper.class);
-
     @PersistenceContext
     private EntityManager entityManager;
 
+    @Transactional
+    @NotNull
     public <T extends IZombieModelObject> T save(@NotNull T object) {
-        try {
-            entityManager.getTransaction().begin();
-            entityManager.persist(object);
-            entityManager.getTransaction().commit();
-            LOGGER.trace("Persisted object: " + object);
-            return object;
-        }
-        catch(Exception e) {
-            entityManager.getTransaction().rollback();
-            LOGGER.warn("An exception occurred while persisting object: " + object, e);
-            throw e;
-        }
+        entityManager.persist(object);
+        return object;
     }
 
     @NotNull
@@ -45,17 +35,10 @@ public class ZombiesEntityManagerHelper {
         return Optional.ofNullable(entityManager.find(clazz, id));
     }
 
-    public <T extends IZombieModelObject>  boolean existsByName(@NotNull String name) {
-        return findByName(name).isPresent();
-    }
-
     @NotNull
-    public Optional<ZombiesTile> findByName(@NotNull String name) {
-        var tableName = ZombiesTile.class.getAnnotation(Table.class).name();
-        var query = entityManager.createQuery(
-                "SELECT t FROM " + tableName + " t WHERE t." + COLUMN_TILE_NAME + " = '" + name + "'",
-                ZombiesTile.class
-        );
+    public Optional<ZombiesTile> findTileByName(@NotNull String name) {
+        var query = entityManager.createNamedQuery(QUERY_FIND_TILE_BY_NAME, ZombiesTile.class);
+        query.setParameter(COLUMN_NAME, name);
         var result = query.getResultList();
         return switch (result.size()) {
             case 0 -> Optional.empty();
@@ -74,7 +57,7 @@ public class ZombiesEntityManagerHelper {
     public <T extends IZombieModelObject> List<T> findAllById(@NotNull Collection<UUID> ids, @NotNull Class<T> clazz) {
         var tableName = clazz.getAnnotation(Table.class).name();
         var query = entityManager.createQuery(
-                "SELECT t FROM " + tableName + " t WHERE t." + (tableName + COLUMN_ID) + " IN :ids",
+                "SELECT t FROM " + tableName + " t WHERE t." + COLUMN_ID + " IN :ids",
                 clazz
         );
         query.setParameter("ids", ids);
@@ -85,25 +68,15 @@ public class ZombiesEntityManagerHelper {
     public <T extends IZombieModelObject> List<UUID> findAllIds(@NotNull Class<T> clazz) {
         var tableName = clazz.getAnnotation(Table.class).name();
         var query = entityManager.createQuery(
-                "SELECT t." + (tableName + COLUMN_ID) + " FROM " + tableName + " t",
+                "SELECT t." + COLUMN_ID + " FROM " + tableName + " t",
                 UUID.class
         );
         return query.getResultList();
     }
 
+    @Transactional
     @NotNull
     public <T extends IZombieModelObject> T update(@NotNull T object) {
-        try {
-            entityManager.getTransaction().begin();
-            var merged = entityManager.merge(object);
-            entityManager.getTransaction().commit();
-            LOGGER.trace("Updated object: " + merged);
-            return merged;
-        }
-        catch(Exception e) {
-            entityManager.getTransaction().rollback();
-            LOGGER.warn("An exception occurred while persisting object: " + object, e);
-            throw e;
-        }
+        return entityManager.merge(object);
     }
 }

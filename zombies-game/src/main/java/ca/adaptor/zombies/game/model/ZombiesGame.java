@@ -3,6 +3,7 @@ package ca.adaptor.zombies.game.model;
 import ca.adaptor.zombies.game.util.ZombiesEntityManagerHelper;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.Cascade;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -32,7 +33,7 @@ public class ZombiesGame implements IZombieModelObject {
     @Getter
     @Id
     @GeneratedValue
-    @Column(name = COLUMN_GAME_ID, updatable = false, nullable = false)
+    @Column(name = COLUMN_ID, updatable = false, nullable = false)
     private UUID id;
     @Getter
     @ElementCollection(fetch = FetchType.EAGER)
@@ -50,16 +51,16 @@ public class ZombiesGame implements IZombieModelObject {
     @ElementCollection(fetch = FetchType.EAGER)
     private Set<UUID> playerIds = new HashSet<>();
     @Getter
-    @Column(name = COLUMN_GAME_MAP_ID, nullable = false, updatable = false, unique = true)
+    @Column(name = COLUMN_MAP_ID, nullable = false, updatable = false, unique = true)
     private UUID mapId;
     @Getter
-    @Column(name = COLUMN_GAME_POPULATED, nullable = false)
+    @Column(name = COLUMN_POPULATED, nullable = false)
     private boolean populated = false;
     @Getter
-    @Column(name =  COLUMN_GAME_TURN, nullable = false)
+    @Column(name = COLUMN_TURN, nullable = false)
     private int turn = 0;
     @Getter @Setter
-    @Column(name = COLUMN_GAME_RUNNING, nullable = false)
+    @Column(name = COLUMN_RUNNING, nullable = false)
     private boolean running = false;
 
     @Autowired @Transient
@@ -114,7 +115,6 @@ public class ZombiesGame implements IZombieModelObject {
         assert populated;
 
         var map = getMap();
-        LOGGER.trace("[game=" + getId() + "] Populating map (" + mapId + ")...");
         //----- Go through all of the map-tiles and place its items
         var mapTiles = entityManager.findAllById(map.getMapTileIds().values(), ZombiesMapTile.class);
         for(var mapTile : mapTiles) {
@@ -244,10 +244,10 @@ public class ZombiesGame implements IZombieModelObject {
             throw new IllegalStateException("This game (" + getId() + ") is already populated!");
         }
 
-        LOGGER.debug("[game=" + getId() + "] Populating game...");
-
         populated = true;
+        var tic = System.currentTimeMillis();
         populateMap();
+        LOGGER.trace("[game=" + getId() + "] Populating game took " + (System.currentTimeMillis()-tic) + "ms ");
         return true;
     }
 

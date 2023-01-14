@@ -34,8 +34,7 @@ public class ZombiesMapController {
     @NotNull
     ZombiesMap createMap() {
         LOGGER.trace("Creating new map...");
-        var map = ZombiesMapGenerator.create(entityManager, autowireFactory, rng);
-        map = entityManager.update(map);
+        var map = entityManager.save(ZombiesMapGenerator.create(entityManager, autowireFactory, rng));
         LOGGER.debug("Created map: " + map.getId());
         return map;
     }

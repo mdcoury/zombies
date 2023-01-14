@@ -21,17 +21,17 @@ public class ZombiesGameData implements IZombieModelObject {
 
     @Id
     @GeneratedValue
-    @Column(name = COLUMN_GAME_DATA_ID, updatable = false, nullable = false)
+    @Column(name = COLUMN_ID, updatable = false, nullable = false)
     private UUID id;
     @Setter
-    @Column(name = COLUMN_GAME_DATA_LOCATION, nullable = false)
+    @Column(name = COLUMN_LOCATION, nullable = false)
     private ZombiesCoordinate location;
-    @Column(name = COLUMN_GAME_DATA_CARD_IDS, nullable = false)
+    @Column(name = COLUMN_CARD_IDS, nullable = false)
     @ElementCollection(fetch = FetchType.EAGER)
     private List<UUID> eventCardIds = new ArrayList<>();
-    @Column(name = COLUMN_GAME_DATA_NUM_BULLETS, nullable = false)
+    @Column(name = COLUMN_NUM_BULLETS, nullable = false)
     private int numBullets = 3;
-    @Column(name = COLUMN_GAME_DATA_NUM_LIFE, nullable = false)
+    @Column(name = COLUMN_NUM_LIFE, nullable = false)
     private int numLife = 3;
 
     public ZombiesGameData(@NotNull ZombiesCoordinate location) {

@@ -29,7 +29,7 @@ public class ZombiesMapTileController {
         var mapTileOpt = entityManager.findById(mapTileId, ZombiesMapTile.class);
         if(mapTileOpt.isPresent()) {
             var mapTile = mapTileOpt.get();
-            LOGGER.debug("Retrieving map-tile: " + mapTile.getId());
+//            LOGGER.debug("Retrieving map-tile: " + mapTile.getId());
             return ResponseEntity.ok(mapTile);
         }
         return new ResponseEntity<>(HttpStatus.NOT_FOUND);

@@ -40,8 +40,7 @@ public class ZombiesGameController {
     public ResponseEntity<UUID> create() {
         LOGGER.trace("Creating new game...");
         var map = mapController.createMap();
-        var game = new ZombiesGame(map.getId());
-        entityManager.save(game);
+        var game = entityManager.save(new ZombiesGame(map.getId()));
         LOGGER.debug("Created game: " + game.getId());
         return ResponseEntity.ok(game.getId());
     }
