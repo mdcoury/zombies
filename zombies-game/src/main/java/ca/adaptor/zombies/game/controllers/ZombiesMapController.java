@@ -1,9 +1,7 @@
 package ca.adaptor.zombies.game.controllers;
 
 import ca.adaptor.zombies.game.model.ZombiesMap;
-import ca.adaptor.zombies.game.repositories.ZombiesMapRepository;
-import ca.adaptor.zombies.game.repositories.ZombiesMapTileRepository;
-import ca.adaptor.zombies.game.repositories.ZombiesTileRepository;
+import ca.adaptor.zombies.game.util.ZombiesEntityManagerHelper;
 import ca.adaptor.zombies.game.util.ZombiesMapGenerator;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -29,20 +27,14 @@ public class ZombiesMapController {
     private final Random rng = new Random(rngSeed);
 
     @Autowired
-    private ZombiesMapRepository mapRepository;
-    @Autowired
-    private ZombiesTileRepository tileRepository;
-    @Autowired
-    private ZombiesMapTileRepository mapTileRepository;
-
+    private ZombiesEntityManagerHelper entityManager;
     @Autowired
     private AutowireCapableBeanFactory autowireFactory;
 
     @NotNull
     ZombiesMap createMap() {
         LOGGER.trace("Creating new map...");
-        var map = ZombiesMapGenerator.create(tileRepository, mapTileRepository, autowireFactory, rng);
-        map = mapRepository.saveAndFlush(map);
+        var map = entityManager.save(ZombiesMapGenerator.create(entityManager, autowireFactory, rng));
         LOGGER.debug("Created map: " + map.getId());
         return map;
     }
@@ -54,7 +46,7 @@ public class ZombiesMapController {
 
     @GetMapping(path = "{mapId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ZombiesMap> getMap(@PathVariable UUID mapId) {
-        var mapOpt = mapRepository.findById(mapId);
+        var mapOpt = entityManager.findById(mapId, ZombiesMap.class);
         if(mapOpt.isPresent()) {
             var map = mapOpt.get();
             LOGGER.debug("Retrieving map: " + map.getId());

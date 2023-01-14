@@ -1,6 +1,6 @@
 package ca.adaptor.zombies.game.model;
 
-import ca.adaptor.zombies.game.repositories.ZombiesMapTileRepository;
+import ca.adaptor.zombies.game.util.ZombiesEntityManagerHelper;
 import jakarta.persistence.*;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -13,7 +13,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
 
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -26,13 +25,13 @@ import static ca.adaptor.zombies.game.model.ZombiesTile.TILE_SIZE;
 @ToString
 @Entity(name = TABLE_MAP)
 @Table(name = TABLE_MAP)
-public class ZombiesMap {
+public class ZombiesMap implements IZombieModelObject {
     private static final Logger LOGGER = LoggerFactory.getLogger(ZombiesMap.class);
 
     @Getter
     @Id
     @GeneratedValue
-    @Column(name = COLUMN_MAP_ID, updatable = false, nullable = false)
+    @Column(name = COLUMN_ID, updatable = false, nullable = false)
     private UUID id;
     @Getter
     @ElementCollection(fetch = FetchType.EAGER)
@@ -59,7 +58,7 @@ public class ZombiesMap {
     private int miny = Integer.MAX_VALUE;
 
     @Transient @Autowired
-    private ZombiesMapTileRepository mapTileRepository;
+    private ZombiesEntityManagerHelper entityManager;
 
     public void autowire(@NotNull AutowireCapableBeanFactory autowireFactory) {
         autowireFactory.autowireBean(this);
@@ -123,7 +122,7 @@ public class ZombiesMap {
             int tlx = entry.getKey().getX() + -minx;
             int tly = entry.getKey().getY() + -miny;
 
-            var mapTile = mapTileRepository.findById(entry.getValue()).orElseThrow();
+            var mapTile = entityManager.findById(entry.getValue(), ZombiesMapTile.class).orElseThrow();
             map[tly  ][tlx  ] = mapTile.get(0,0).ordinal();
             map[tly  ][tlx+1] = mapTile.get(1,0).ordinal();
             map[tly  ][tlx+2] = mapTile.get(2,0).ordinal();
@@ -148,4 +147,5 @@ public class ZombiesMap {
 
         return ret.toString();
     }
+
 }

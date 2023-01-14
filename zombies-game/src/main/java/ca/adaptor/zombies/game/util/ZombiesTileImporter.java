@@ -1,7 +1,6 @@
 package ca.adaptor.zombies.game.util;
 
 import ca.adaptor.zombies.game.model.ZombiesTile;
-import ca.adaptor.zombies.game.repositories.ZombiesTileRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,10 +18,10 @@ import java.util.UUID;
 public class ZombiesTileImporter implements CommandLineRunner {
     private static final Logger LOGGER = LoggerFactory.getLogger(ZombiesTileImporter.class);
 
-    private final ZombiesTileRepository tileRepository;
+    private final ZombiesEntityManagerHelper entityManager;
 
-    public ZombiesTileImporter(@Autowired ZombiesTileRepository tileRepository) {
-        this.tileRepository = tileRepository;
+    public ZombiesTileImporter(@Autowired ZombiesEntityManagerHelper entityManager) {
+        this.entityManager = entityManager;
     }
 
     @Override
@@ -43,7 +42,6 @@ public class ZombiesTileImporter implements CommandLineRunner {
                 .forEach(this::parseLine)
                 ;
         }
-        tileRepository.flush();
     }
 
     private void parseLine(String line) {
@@ -51,7 +49,6 @@ public class ZombiesTileImporter implements CommandLineRunner {
         if(!line.isEmpty() && !line.startsWith("#")) {
             var st = new StringTokenizer(line, ",", false);
             var tile = new ZombiesTile(
-                    UUID.randomUUID(),
                     new ZombiesTile.SquareType[] {
                             ZombiesTile.SquareType.values()[Integer.parseInt(st.nextToken())],
                             ZombiesTile.SquareType.values()[Integer.parseInt(st.nextToken())],
@@ -69,9 +66,8 @@ public class ZombiesTileImporter implements CommandLineRunner {
                     st.nextToken()
             );
 
-            if(!tileRepository.existsByName(tile.getName())) {
-                tile = tileRepository.save(tile);
-//                LOGGER.trace("Created tile: " + tile);
+            if(entityManager.findTileByName(tile.getName()).isEmpty()) {
+                tile = entityManager.save(tile);
             }
         }
     }

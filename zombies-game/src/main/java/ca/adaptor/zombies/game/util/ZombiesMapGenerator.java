@@ -1,8 +1,6 @@
 package ca.adaptor.zombies.game.util;
 
 import ca.adaptor.zombies.game.model.*;
-import ca.adaptor.zombies.game.repositories.ZombiesMapTileRepository;
-import ca.adaptor.zombies.game.repositories.ZombiesTileRepository;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,19 +19,19 @@ public class ZombiesMapGenerator {
 
     @NotNull
     public static ZombiesMap create(
-            @NotNull ZombiesTileRepository tileRepository,
-            @NotNull ZombiesMapTileRepository mapTileRepository,
+            @NotNull ZombiesEntityManagerHelper entityManager,
             @NotNull AutowireCapableBeanFactory autowireFactory,
             @NotNull Random rng
     ) {
         var ret = new ZombiesMap();
         ret.autowire(autowireFactory);
-        var deck = shuffleTiles(tileRepository, rng);
+        var deck = shuffleTiles(entityManager, rng);
 
         var exits = new ArrayList<ZombiesCoordinate>();
-        placeTile(tileRepository.findByName(ZombiesTile.TOWN_SQUARE).orElseThrow(), ret, exits, mapTileRepository, rng);
+        placeTile(entityManager.findTileByName(ZombiesTile.TOWN_SQUARE).orElseThrow(),
+                ret, exits, entityManager, rng);
         for(var tile : deck) {
-            placeTile(tile, ret, exits, mapTileRepository, rng);
+            placeTile(tile, ret, exits, entityManager, rng);
         }
 //        LOGGER.trace(ret.dump());
         return ret;
@@ -43,7 +41,7 @@ public class ZombiesMapGenerator {
             ZombiesTile tile,
             ZombiesMap map,
             List<ZombiesCoordinate> exits,
-            ZombiesMapTileRepository mapTileRepository,
+            ZombiesEntityManagerHelper entityManager,
             Random rng
     ) {
         if(exits.size() == 0) {
@@ -51,7 +49,7 @@ public class ZombiesMapGenerator {
                 // TODO: Do the math so this is centred at (0,0)
                 var topLeft = new ZombiesCoordinate(90,90);
                 var mapTile = new ZombiesMapTile(tile, topLeft, ZombiesMapTile.TileRotation.ROT_0);
-                mapTile = mapTileRepository.save(mapTile);
+                entityManager.save(mapTile);
                 var added = map.add(mapTile);
                 if(added) {
                     addExits(map, tile, exits, topLeft, ZombiesMapTile.TileRotation.ROT_0);
@@ -86,8 +84,8 @@ public class ZombiesMapGenerator {
                     //----- Check to see if this is a valid placement; ie, there is not already a tile there (shouldn't
                     //      happen) and all of the new tile's exits align either with an existing exit or are open
                     var mapTile = new ZombiesMapTile(tile, targetTopLeft, rotation);
-                    if(checkValidPlacement(targetTopLeft, mapTile, map, mapTileRepository)) {
-                        mapTile = mapTileRepository.save(mapTile);
+                    if(checkValidPlacement(targetTopLeft, mapTile, map, entityManager)) {
+                        entityManager.save(mapTile);
                         var added = map.add(mapTile);
                         if(added) {
                             //----- Remove the exit we aligned to
@@ -187,26 +185,20 @@ public class ZombiesMapGenerator {
     }
 
     private static List<ZombiesTile> shuffleTiles(
-            ZombiesTileRepository repository,
+            ZombiesEntityManagerHelper entityManager,
             Random rng
     ) {
-        // NOTE: Workaround because repository.findAll() generates
-        //          java.lang.NullPointerException: Cannot store to object array because "loadedState" is null
-        //      when running from unit-test for an unknown reason
-        var names = repository.findAllNames().orElseThrow();
-        var ret = new ArrayList<ZombiesTile>();
-        for(var name : names) {
-            ret.add(repository.findByName(name).orElseThrow());
-        }
-        int ncards = ret.size();
+        // TODO: Create query to load all the tiles /but/ town square and helipad
+        var ret = entityManager.findAll(ZombiesTile.class);
 
-        var townSquare = repository.findByName(ZombiesTile.TOWN_SQUARE).orElseThrow();
+        var townSquare = entityManager.findTileByName(ZombiesTile.TOWN_SQUARE).orElseThrow();
         ret.remove(townSquare);
-        var helipad = repository.findByName(ZombiesTile.HELIPAD).orElseThrow();
+        var helipad = entityManager.findTileByName(ZombiesTile.HELIPAD).orElseThrow();
         ret.remove(helipad);
 
         Collections.shuffle(ret, rng);
 
+        int ncards = ret.size();
         var index = rng.nextInt(ncards/2) + ncards/2;
         ret.add(index, helipad);
 
@@ -216,16 +208,16 @@ public class ZombiesMapGenerator {
             @NotNull ZombiesCoordinate xy,
             @NotNull ZombiesMapTile mapTile,
             @NotNull ZombiesMap map,
-            ZombiesMapTileRepository mapTileRepository
+            @NotNull ZombiesEntityManagerHelper entityManager
     ) {
-        return checkValidPlacement(xy.getX(), xy.getY(), mapTile, map, mapTileRepository);
+        return checkValidPlacement(xy.getX(), xy.getY(), mapTile, map, entityManager);
     }
     private static boolean checkValidPlacement(
             int x,
             int y,
             @NotNull ZombiesMapTile testTile,
             @NotNull ZombiesMap map,
-            ZombiesMapTileRepository mapTileRepository
+            @NotNull ZombiesEntityManagerHelper entityManager
     ) {
         if(x%TILE_SIZE == 0 && y%TILE_SIZE == 0) {
             var topLeft = new ZombiesCoordinate(x, y);
@@ -234,23 +226,23 @@ public class ZombiesMapGenerator {
                 //----- Ensure that all of this tile's exits align either with an exit or empty space
                 return
                         // NORTH
-                        testAdjacent(map, x+1, y-1, testTile.get(1,0) == ZombiesTile.SquareType.ROAD, mapTileRepository)
+                        testAdjacent(map, x+1, y-1, testTile.get(1,0) == ZombiesTile.SquareType.ROAD, entityManager)
                                 // EAST
-                                && testAdjacent(map, x+3, y+1, testTile.get(2,1) == ZombiesTile.SquareType.ROAD, mapTileRepository)
+                                && testAdjacent(map, x+3, y+1, testTile.get(2,1) == ZombiesTile.SquareType.ROAD, entityManager)
                                 // WEST
-                                && testAdjacent(map, x-1, y+1, testTile.get(0,1) == ZombiesTile.SquareType.ROAD, mapTileRepository)
+                                && testAdjacent(map, x-1, y+1, testTile.get(0,1) == ZombiesTile.SquareType.ROAD, entityManager)
                                 // SOUTH
-                                && testAdjacent(map, x+1, y+3, testTile.get(1,2) == ZombiesTile.SquareType.ROAD, mapTileRepository)
+                                && testAdjacent(map, x+1, y+3, testTile.get(1,2) == ZombiesTile.SquareType.ROAD, entityManager)
                         ;
             }
         }
         return false;
     }
-    private static boolean testAdjacent(ZombiesMap map, int x, int y, boolean isRoad, ZombiesMapTileRepository mapTileRepository) {
+    private static boolean testAdjacent(ZombiesMap map, int x, int y, boolean isRoad, ZombiesEntityManagerHelper entityManager) {
         ZombiesTile.SquareType targetSquare = null;
         var targetTileId = map.getMapTileId(new ZombiesCoordinate(x,y));
         if(targetTileId != null) {
-            var targetTile = mapTileRepository.findById(targetTileId).orElseThrow();
+            var targetTile = entityManager.findById(targetTileId, ZombiesMapTile.class).orElseThrow();
             targetSquare = targetTile.getSquareType(x,y);
         }
 

@@ -4,7 +4,8 @@ import ca.adaptor.zombies.game.engine.ZombiesGameBroker;
 import ca.adaptor.zombies.game.engine.ZombiesGameEngine;
 import ca.adaptor.zombies.game.model.ZombiesGame;
 import ca.adaptor.zombies.game.model.ZombiesGameData;
-import ca.adaptor.zombies.game.repositories.*;
+import ca.adaptor.zombies.game.model.ZombiesPlayer;
+import ca.adaptor.zombies.game.util.ZombiesEntityManagerHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,7 +15,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -29,21 +29,9 @@ public class ZombiesGameController {
     private final ExecutorService theExecutor = Executors.newWorkStealingPool();
 
     @Autowired
-    private ZombiesGameRepository gameRepository;
-    @Autowired
-    private ZombiesGameDataRepository gameDataRepository;
-    @Autowired
-    private ZombiesPlayerRepository playerRepository;
-    @Autowired
-    private ZombiesMapRepository mapRepository;
-    @Autowired
-    private ZombiesMapTileRepository mapTileRepository;
-
+    private ZombiesEntityManagerHelper entityManager;
     @Autowired
     private ZombiesMapController mapController;
-    @Autowired
-    private ZombiesWsController wsController;
-
     @Autowired
     private AutowireCapableBeanFactory autowireFactory;
 
@@ -52,14 +40,14 @@ public class ZombiesGameController {
     public ResponseEntity<UUID> create() {
         LOGGER.trace("Creating new game...");
         var map = mapController.createMap();
-        var game = gameRepository.saveAndFlush(new ZombiesGame(map.getId()));
+        var game = entityManager.save(new ZombiesGame(map.getId()));
         LOGGER.debug("Created game: " + game.getId());
         return ResponseEntity.ok(game.getId());
     }
 
     @GetMapping(path = "{gameId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ZombiesGame> getGame(@PathVariable UUID gameId) {
-        var gameOpt = gameRepository.findById(gameId);
+        var gameOpt = entityManager.findById(gameId, ZombiesGame.class);
         if(gameOpt.isPresent()) {
             var game = gameOpt.get();
             LOGGER.debug("Retrieving game: " + game.getId());
@@ -71,18 +59,19 @@ public class ZombiesGameController {
     /** @return the {@link UUID} of the player's {@link ZombiesGameData} */
     @PutMapping("{gameId}/join/{playerId}")
     public ResponseEntity<UUID> joinGame(@PathVariable UUID gameId, @PathVariable UUID playerId) {
-        var gameOpt = gameRepository.findById(gameId);
+        var gameOpt = entityManager.findById(gameId, ZombiesGame.class);
         if(gameOpt.isPresent()) {
             var game = gameOpt.get();
             game.autowire(autowireFactory);
 
-            var playerOpt = playerRepository.findById(playerId);
+            var playerOpt = entityManager.findById(playerId, ZombiesPlayer.class);
             if(playerOpt.isPresent()) {
                 var player = playerOpt.get();
                 var playerDataId = game.addPlayer(player.getId());
                 if(playerDataId != null) {
                     LOGGER.debug("Player (" + player.getId() + ") joined game (" + game.getId() + ")");
-                    gameRepository.saveAndFlush(game);
+                    entityManager.update(game);
+                    // TODO: Do I need to detach before these fall out of scope?
                 }
                 return ResponseEntity.ok(playerDataId);
             }
@@ -93,14 +82,14 @@ public class ZombiesGameController {
 
     @PutMapping("{gameId}/populate")
     public ResponseEntity<Boolean> populateGame(@PathVariable UUID gameId) {
-        var gameOpt = gameRepository.findById(gameId);
+        var gameOpt = entityManager.findById(gameId, ZombiesGame.class);
         if(gameOpt.isPresent()) {
             var game = gameOpt.get();
             game.autowire(autowireFactory);
             if(!game.isPopulated()) {
                 LOGGER.debug("Populating game: " + game.getId());
                 var populated = game.populate();
-                gameRepository.saveAndFlush(game);
+                entityManager.update(game);
                 return ResponseEntity.ok(populated);
             }
             return ResponseEntity.ok(false);
@@ -111,7 +100,7 @@ public class ZombiesGameController {
     /** @return the {@link UUID} of the {@link ZombiesGameEngine} */
     @PutMapping("{gameId}/start")
     public ResponseEntity<UUID> startGame(@PathVariable UUID gameId) {
-        var gameOpt = gameRepository.findById(gameId);
+        var gameOpt = entityManager.findById(gameId, ZombiesGame.class);
         if(gameOpt.isPresent()) {
             var game = gameOpt.get();
             game.autowire(autowireFactory);

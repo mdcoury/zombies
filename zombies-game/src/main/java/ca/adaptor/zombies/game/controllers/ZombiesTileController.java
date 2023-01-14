@@ -1,7 +1,7 @@
 package ca.adaptor.zombies.game.controllers;
 
 import ca.adaptor.zombies.game.model.ZombiesTile;
-import ca.adaptor.zombies.game.repositories.ZombiesTileRepository;
+import ca.adaptor.zombies.game.util.ZombiesEntityManagerHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,19 +23,18 @@ import static ca.adaptor.zombies.game.controllers.ZombiesControllerConstants.PAT
 public class ZombiesTileController {
     private static final Logger LOGGER = LoggerFactory.getLogger(ZombiesTileController.class);
     @Autowired
-    private ZombiesTileRepository tileRepository;
+    private ZombiesEntityManagerHelper entityManager;
 
     @GetMapping
     public ResponseEntity<List<UUID>> getAllIds() {
-        var retOpt = tileRepository.findAllIds();
-        LOGGER.debug("Retrieving all tile-IDs... found " + retOpt.map(List::size).orElse(0));
-        return retOpt.map(ResponseEntity::ok)
-                .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
+        var ret = entityManager.findAllIds(ZombiesTile.class);
+        LOGGER.debug("Retrieving all tile-IDs... found " + ret.size());
+        return ResponseEntity.ok(ret);
     }
 
     @GetMapping(value = "{tileId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ZombiesTile> getTile(@PathVariable UUID tileId) {
-        var tileOpt = tileRepository.findById(tileId);
+        var tileOpt = entityManager.findById(tileId, ZombiesTile.class);
         if(tileOpt.isPresent()) {
             var tile = tileOpt.get();
             LOGGER.debug("Retrieving tile: " + tile.getId());

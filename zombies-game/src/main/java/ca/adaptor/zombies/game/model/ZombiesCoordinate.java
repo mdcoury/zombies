@@ -3,7 +3,10 @@ package ca.adaptor.zombies.game.model;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.Embeddable;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -14,6 +17,7 @@ public class ZombiesCoordinate {
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private int x;
     private int y;
+
     @Override
     public String toString() {
         try {

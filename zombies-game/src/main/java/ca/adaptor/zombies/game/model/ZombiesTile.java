@@ -10,8 +10,8 @@ import java.util.List;
 import java.util.UUID;
 
 import static ca.adaptor.zombies.game.model.ZombiesModelConstants.*;
+import static ca.adaptor.zombies.game.util.ZombiesQueryConstants.QUERY_FIND_TILE_BY_NAME;
 
-@AllArgsConstructor
 @NoArgsConstructor
 @Getter
 @ToString
@@ -20,10 +20,16 @@ import static ca.adaptor.zombies.game.model.ZombiesModelConstants.*;
 @Table(
         name = TABLE_TILE,
         indexes = {
-                @Index(name = INDEX_TILE_NAME, columnList = COLUMN_TILE_NAME)
+                @Index(name = INDEX_TILE_NAME, columnList = COLUMN_NAME, unique = true)
         }
 )
-public class ZombiesTile {
+@NamedQueries({
+        @NamedQuery(
+                name = QUERY_FIND_TILE_BY_NAME,
+                query = "SELECT t FROM " + TABLE_TILE + " t WHERE t." + COLUMN_NAME + " = :name"
+        )
+})
+public class ZombiesTile implements IZombieModelObject {
     public static final int NUM_SIDES = 4;
     public static final int TILE_SIZE = 3;
 
@@ -42,19 +48,28 @@ public class ZombiesTile {
 
     @Id
     @GeneratedValue
-    @Column(name = COLUMN_TILE_ID, updatable = false, nullable = false)
+    @Column(name = COLUMN_ID, updatable = false, nullable = false)
     private UUID id;
     @ElementCollection(fetch = FetchType.EAGER)
     @Enumerated
-    private SquareType[] squareTypes = new SquareType[9];
-    @Column(name = COLUMN_TILE_NUM_ZOMBIES, updatable = false, nullable = false)
+    private SquareType[] squareTypes = new SquareType[TILE_SIZE*TILE_SIZE];
+    @Column(name = COLUMN_NUM_ZOMBIES, updatable = false, nullable = false)
     private int numZombies;
-    @Column(name = COLUMN_TILE_NUM_LIFE, updatable = false, nullable = false)
+    @Column(name = COLUMN_NUM_LIFE, updatable = false, nullable = false)
     private int numLife;
-    @Column(name = COLUMN_TILE_NUM_BULLETS, updatable = false, nullable = false)
+    @Column(name = COLUMN_NUM_BULLETS, updatable = false, nullable = false)
     private int numBullets;
-    @Column(name = COLUMN_TILE_NAME, updatable = false, nullable = false)
+    @Column(name = COLUMN_NAME, updatable = false, nullable = false, unique = true)
     private String name;
+
+    public ZombiesTile(SquareType[] squareTypes, int numZombies, int numLife, int numBullets, String name) {
+        assert squareTypes.length == TILE_SIZE*TILE_SIZE;
+        System.arraycopy(squareTypes, 0, this.squareTypes, 0, TILE_SIZE*TILE_SIZE);
+        this.numZombies = numZombies;
+        this.numLife = numLife;
+        this.numBullets = numBullets;
+        this.name = name;
+    }
 
     @NotNull
     public SquareType get(int x, int y) {

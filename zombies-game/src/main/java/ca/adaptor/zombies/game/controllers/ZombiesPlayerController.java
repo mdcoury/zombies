@@ -1,7 +1,7 @@
 package ca.adaptor.zombies.game.controllers;
 
 import ca.adaptor.zombies.game.model.ZombiesPlayer;
-import ca.adaptor.zombies.game.repositories.ZombiesPlayerRepository;
+import ca.adaptor.zombies.game.util.ZombiesEntityManagerHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,11 +19,11 @@ import static ca.adaptor.zombies.game.controllers.ZombiesControllerConstants.PAT
 public class ZombiesPlayerController {
     private static final Logger LOGGER = LoggerFactory.getLogger(ZombiesPlayerController.class);
     @Autowired
-    private ZombiesPlayerRepository repository;
+    private ZombiesEntityManagerHelper entityManager;
 
     @PostMapping
     public ResponseEntity<UUID> create() {
-        var player = repository.saveAndFlush(new ZombiesPlayer());
+        var player = entityManager.save(new ZombiesPlayer());
         LOGGER.debug("Created player: " + player.getId());
         return ResponseEntity.ok(player.getId());
     }

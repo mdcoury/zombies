@@ -1,10 +1,9 @@
 package ca.adaptor.zombies.game.model;
 
-import ca.adaptor.zombies.game.repositories.ZombiesGameDataRepository;
-import ca.adaptor.zombies.game.repositories.ZombiesMapRepository;
-import ca.adaptor.zombies.game.repositories.ZombiesMapTileRepository;
+import ca.adaptor.zombies.game.util.ZombiesEntityManagerHelper;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.Cascade;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -23,7 +22,7 @@ import static ca.adaptor.zombies.game.model.ZombiesTile.TILE_SIZE;
 @ToString
 @Entity(name = TABLE_GAME)
 @Table(name = TABLE_GAME)
-public class ZombiesGame {
+public class ZombiesGame implements IZombieModelObject {
     private static final Logger LOGGER = LoggerFactory.getLogger(ZombiesGame.class);
 
     private static final int MIN_PLAYERS = 1;
@@ -34,7 +33,7 @@ public class ZombiesGame {
     @Getter
     @Id
     @GeneratedValue
-    @Column(name = COLUMN_GAME_ID, updatable = false, nullable = false)
+    @Column(name = COLUMN_ID, updatable = false, nullable = false)
     private UUID id;
     @Getter
     @ElementCollection(fetch = FetchType.EAGER)
@@ -52,24 +51,20 @@ public class ZombiesGame {
     @ElementCollection(fetch = FetchType.EAGER)
     private Set<UUID> playerIds = new HashSet<>();
     @Getter
-    @Column(name = COLUMN_GAME_MAP_ID, nullable = false, updatable = false, unique = true)
+    @Column(name = COLUMN_MAP_ID, nullable = false, updatable = false, unique = true)
     private UUID mapId;
     @Getter
-    @Column(name = COLUMN_GAME_POPULATED, nullable = false)
+    @Column(name = COLUMN_POPULATED, nullable = false)
     private boolean populated = false;
     @Getter
-    @Column(name =  COLUMN_GAME_TURN, nullable = false)
+    @Column(name = COLUMN_TURN, nullable = false)
     private int turn = 0;
     @Getter @Setter
-    @Column(name = COLUMN_GAME_RUNNING, nullable = false)
+    @Column(name = COLUMN_RUNNING, nullable = false)
     private boolean running = false;
 
     @Autowired @Transient
-    private ZombiesGameDataRepository gameDataRepository;
-    @Autowired @Transient
-    private ZombiesMapRepository mapRepository;
-    @Autowired @Transient
-    private ZombiesMapTileRepository mapTileRepository;
+    private ZombiesEntityManagerHelper entityManager;
 
     @Transient
     private final Map<UUID, ZombiesGameData> gameDataCache = new HashMap<>();
@@ -88,7 +83,7 @@ public class ZombiesGame {
     @NotNull
     public ZombiesGameData getPlayerData(@NotNull UUID playerId) {
         if(!gameDataCache.containsKey(playerId)) {
-            var playerData = gameDataRepository.findById(playerDataIds.get(playerId)).orElseThrow();
+            var playerData = entityManager.findById(playerDataIds.get(playerId), ZombiesGameData.class).orElseThrow();
             gameDataCache.put(playerId, playerData);
         }
         return gameDataCache.get(playerId);
@@ -107,11 +102,11 @@ public class ZombiesGame {
     }
 
     private ZombiesMap getMap() {
-        assert mapRepository != null;
+        assert entityManager != null;
         assert mapId != null;
 
         if(theMap == null) {
-            theMap = mapRepository.findById(mapId).orElseThrow();
+            theMap = entityManager.findById(mapId, ZombiesMap.class).orElseThrow();
         }
         return theMap;
     }
@@ -120,9 +115,8 @@ public class ZombiesGame {
         assert populated;
 
         var map = getMap();
-        LOGGER.trace("[game=" + getId() + "] Populating map (" + mapId + ")...");
         //----- Go through all of the map-tiles and place its items
-        var mapTiles = mapTileRepository.findAllById(map.getMapTileIds().values());
+        var mapTiles = entityManager.findAllById(map.getMapTileIds().values(), ZombiesMapTile.class);
         for(var mapTile : mapTiles) {
             //----- The town-square starts with _no_ zombies...
             if(!mapTile.isTownSquare()) {
@@ -222,7 +216,7 @@ public class ZombiesGame {
                     playerIds.add(playerId);
                     var map = getMap();
                     var playerData = new ZombiesGameData(map.getTownSquareLocation());
-                    playerData = gameDataRepository.saveAndFlush(playerData);
+                    playerData = entityManager.update(playerData);
                     playerDataIds.put(playerId, playerData.getId());
                     return playerData.getId();
                 }
@@ -244,18 +238,17 @@ public class ZombiesGame {
     }
 
     public boolean populate() {
-        assert gameDataRepository != null;
-        assert mapRepository != null;
-        assert mapTileRepository != null;
+        assert entityManager != null;
 
         if(populated) {
             throw new IllegalStateException("This game (" + getId() + ") is already populated!");
         }
 
-        LOGGER.debug("[game=" + getId() + "] Populating game...");
-
         populated = true;
+        var tic = System.currentTimeMillis();
         populateMap();
+        LOGGER.trace("[game=" + getId() + "] Populating game took " + (System.currentTimeMillis()-tic) + "ms ");
         return true;
     }
+
 }

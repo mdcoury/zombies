@@ -21,7 +21,7 @@ import static org.hibernate.annotations.CascadeType.SAVE_UPDATE;
 @ToString
 @Entity(name = TABLE_MAP_TILE)
 @Table(name = TABLE_MAP_TILE)
-public class ZombiesMapTile {
+public class ZombiesMapTile implements IZombieModelObject {
     public enum TileRotation {
         ROT_0, ROT_90, ROT_180, ROT_270
     }
@@ -29,18 +29,18 @@ public class ZombiesMapTile {
     @Getter
     @Id
     @GeneratedValue
-    @Column(name = COLUMN_MAP_TILE_ID, updatable = false, nullable = false)
+    @Column(name = COLUMN_ID, updatable = false, nullable = false)
     private UUID id;
     @Cascade(value = { MERGE, SAVE_UPDATE })
     @JoinColumn(name = COLUMN_TILE_ID, nullable = false, updatable = false)
     @ManyToOne(fetch = FetchType.EAGER)
     private ZombiesTile tile;
     @Getter
-    @Column(name = COLUMN_MAP_TILE_ROTATION)
+    @Column(name = COLUMN_ROTATION)
     @Enumerated
     private TileRotation rotation;
     @Getter @Setter
-    @Column(name = COLUMN_MAP_TILE_TOP_LEFT)
+    @Column(name = COLUMN_TOP_LEFT)
     @Embedded
     private ZombiesCoordinate topLeft;
 
